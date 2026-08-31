@@ -44,7 +44,7 @@ export function WineInventoryPage() {
             <thead>
               <tr>
                 <th>Wine</th>
-                <th>Country</th>
+                <th className="col-country">Country</th>
                 <th className="numeric">Balance in Bottles</th>
               </tr>
             </thead>
@@ -56,7 +56,7 @@ export function WineInventoryPage() {
                       {wine.name}
                     </Link>
                   </td>
-                  <td>{wine.country ?? '-'}</td>
+                  <td className="col-country">{wine.country ?? '-'}</td>
                   <td className="numeric">{balanceInBottles}</td>
                 </tr>
               ))}

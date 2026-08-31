@@ -1,4 +1,5 @@
 import { useState, type SubmitEvent } from 'react'
+import { Modal } from './Modal'
 
 interface Entity {
   id: string
@@ -52,6 +53,7 @@ export function EntityManager({
   sortOptions,
   onSortByChange,
 }: EntityManagerProps) {
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newCountry, setNewCountry] = useState('')
   const [createError, setCreateError] = useState<string | null>(null)
@@ -66,14 +68,20 @@ export function EntityManager({
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
+  function openCreateModal() {
+    setNewName('')
+    setNewCountry('')
+    setCreateError(null)
+    setIsCreateOpen(true)
+  }
+
   async function handleCreate(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     setCreateError(null)
     setIsCreating(true)
     try {
       await onCreate({ name: newName, country: newCountry })
-      setNewName('')
-      setNewCountry('')
+      setIsCreateOpen(false)
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Could not create.')
     } finally {
@@ -118,30 +126,45 @@ export function EntityManager({
     <div>
       <div className="page-header">
         <h1>{title}</h1>
+        <button type="button" className="btn btn--primary" onClick={openCreateModal}>
+          + New {singularLabel}
+        </button>
       </div>
 
-      <form className="inline-form" onSubmit={handleCreate}>
-        <input
-          className="search-input"
-          aria-label={`New ${singularLabel} name`}
-          value={newName}
-          onChange={(event) => setNewName(event.target.value)}
-          placeholder={`New ${singularLabel} name`}
-        />
-        {showCountry && (
-          <input
-            className="search-input"
-            aria-label="Country"
-            value={newCountry}
-            onChange={(event) => setNewCountry(event.target.value)}
-            placeholder="Country"
-          />
-        )}
-        <button type="submit" className="btn btn--primary" disabled={isCreating || !newName.trim()}>
-          {isCreating ? 'Creating...' : `Create ${singularLabel}`}
-        </button>
-      </form>
-      {createError && <p className="notice notice--error">{createError}</p>}
+      {isCreateOpen && (
+        <Modal title={`New ${singularLabel}`} onClose={() => setIsCreateOpen(false)}>
+          <form className="stack" onSubmit={handleCreate}>
+            <div className="field">
+              <label htmlFor="new-entity-name">Name</label>
+              <input
+                id="new-entity-name"
+                value={newName}
+                onChange={(event) => setNewName(event.target.value)}
+                autoFocus
+              />
+            </div>
+            {showCountry && (
+              <div className="field">
+                <label htmlFor="new-entity-country">Country</label>
+                <input
+                  id="new-entity-country"
+                  value={newCountry}
+                  onChange={(event) => setNewCountry(event.target.value)}
+                />
+              </div>
+            )}
+            {createError && <p className="notice notice--error">{createError}</p>}
+            <div className="picker" style={{ justifyContent: 'flex-end' }}>
+              <button type="button" className="btn" onClick={() => setIsCreateOpen(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn--primary" disabled={isCreating || !newName.trim()}>
+                {isCreating ? 'Creating...' : `Create ${singularLabel}`}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       <div className="inline-form">
         <input
@@ -182,7 +205,7 @@ export function EntityManager({
             <thead>
               <tr>
                 <th>Name</th>
-                {showCountry && <th>Country</th>}
+                {showCountry && <th className="col-country">Country</th>}
                 <th>Status</th>
                 <th className="numeric">Actions</th>
               </tr>
@@ -198,7 +221,7 @@ export function EntityManager({
                     )}
                   </td>
                   {showCountry && (
-                    <td>
+                    <td className="col-country">
                       {editingId === item.id ? (
                         <input
                           value={editingCountry}

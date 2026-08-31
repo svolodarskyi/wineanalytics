@@ -335,6 +335,12 @@ table {
   letter-spacing: 0.04em;
 }
 
+.data-table .col-country {
+  /* A country name never needs much room; let the name/actions columns
+     take the space a stretched table would otherwise give this one. */
+  width: 140px;
+}
+
 .data-table tbody tr:hover {
   background: var(--bg-subtle);
 }
@@ -618,6 +624,46 @@ table {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+
+.modal {
+  width: 100%;
+  max-width: 420px;
+  max-height: calc(100svh - 32px);
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.modal__close {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
 }
 
 .spinner-text {

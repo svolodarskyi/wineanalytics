@@ -84,7 +84,9 @@ describe('InvoiceReviewPage', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /approve/i })).toBeEnabled())
 
     await user.click(screen.getByRole('button', { name: /approve/i }))
-    expect(await screen.findByText('Approved')).toBeInTheDocument()
+
+    // Approving redirects to the invoices list, so this page unmounts.
+    await waitFor(() => expect(screen.queryByRole('button', { name: /approve/i })).not.toBeInTheDocument())
 
     const stored = await testServicesState.current.invoices.get(invoice.id)
     expect(stored?.status).toBe('approved')

@@ -11,6 +11,12 @@ vi.mock('../../services', () => ({
   },
 }))
 
+async function createWine(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole('button', { name: /new wine/i }))
+  await user.type(await screen.findByLabelText('Name'), name)
+  await user.click(screen.getByRole('button', { name: /create wine/i }))
+}
+
 describe('SettingsWinesPage', () => {
   beforeEach(() => {
     resetTestServices()
@@ -20,8 +26,7 @@ describe('SettingsWinesPage', () => {
     const user = userEvent.setup()
     renderWithProviders(<SettingsWinesPage />)
 
-    await user.type(screen.getByLabelText(/new wine name/i), 'Test Wine XYZ')
-    await user.click(screen.getByRole('button', { name: /create wine/i }))
+    await createWine(user, 'Test Wine XYZ')
     const row = (await screen.findByText('Test Wine XYZ')).closest('tr') as HTMLElement
     expect(row).toBeInTheDocument()
 
@@ -46,8 +51,7 @@ describe('SettingsWinesPage', () => {
     await testServicesState.current.wines.create({ name: 'Existing Wine' })
     renderWithProviders(<SettingsWinesPage />)
 
-    await user.type(screen.getByLabelText(/new wine name/i), 'Existing Wine')
-    await user.click(screen.getByRole('button', { name: /create wine/i }))
+    await createWine(user, 'Existing Wine')
 
     expect(await screen.findByText(/already exists/i)).toBeInTheDocument()
   })

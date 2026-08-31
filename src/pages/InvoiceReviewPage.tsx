@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ConfidenceBadge } from '../components/ConfidenceBadge'
 import { EntityPicker } from '../components/EntityPicker'
 import { InvoiceStatusBadge } from '../components/StatusBadge'
@@ -20,6 +20,7 @@ type ActivePicker = 'vendor' | { lineItemId: string } | null
 
 export function InvoiceReviewPage() {
   const { invoiceId } = useParams<{ invoiceId: string }>()
+  const navigate = useNavigate()
   const { data: invoice, isLoading } = useInvoice(invoiceId)
   const { data: vendors } = useVendors({ includeInactive: true })
   const { data: wines } = useWines({ includeInactive: true })
@@ -67,7 +68,12 @@ export function InvoiceReviewPage() {
             type="button"
             className="btn btn--primary"
             disabled={!canApprove || approveInvoice.isPending}
-            onClick={() => invoiceId && approveInvoice.mutate(invoiceId)}
+            onClick={() =>
+              invoiceId &&
+              approveInvoice.mutate(invoiceId, {
+                onSuccess: () => navigate('/invoices'),
+              })
+            }
             title={!canApprove ? 'Resolve the vendor and every wine SKU match before approving.' : undefined}
           >
             {approveInvoice.isPending ? 'Approving...' : 'Approve'}
