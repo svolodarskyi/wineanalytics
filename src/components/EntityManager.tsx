@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type SubmitEvent } from 'react'
+import { Fragment, useRef, useState, type ChangeEvent, type SubmitEvent } from 'react'
 import { readFileAsDataUrl } from '../utils/readFileAsDataUrl'
 import { Modal } from './Modal'
 
@@ -338,32 +338,33 @@ export function EntityManager({
             <thead>
               <tr>
                 <th>Name</th>
-                {showCountry && <th className="col-country">Country</th>}
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className="data-table__row--clickable" onClick={() => openDetail(item)}>
-                  <td>
-                    <span className="picker">
-                      {showImage &&
-                        (item.imageDataUrl ? (
-                          <img src={item.imageDataUrl} alt="" className="entity-thumb" />
-                        ) : (
-                          <span className="entity-thumb entity-thumb--empty" />
-                        ))}
-                      <span className="row-link">{item.name}</span>
-                    </span>
-                  </td>
-                  {showCountry && <td className="col-country">{item.country ?? '-'}</td>}
-                  <td>
-                    <span className={`badge ${item.active ? 'badge--confirmed' : 'badge--neutral'}`}>
-                      {item.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {items.map((item, index) => {
+                const previousCountry = index > 0 ? (items[index - 1].country ?? null) : undefined
+                const showGroupHeading = showCountry && sortBy === 'country' && (item.country ?? null) !== previousCountry
+                return (
+                  <Fragment key={item.id}>
+                    {showGroupHeading && (
+                      <tr className="data-table__group-row">
+                        <td colSpan={2}>{item.country ?? 'Unknown country'}</td>
+                      </tr>
+                    )}
+                    <tr className="data-table__row--clickable" onClick={() => openDetail(item)}>
+                      <td>
+                        <span className="row-link">{item.name}</span>
+                      </td>
+                      <td>
+                        <span className={`badge ${item.active ? 'badge--confirmed' : 'badge--neutral'}`}>
+                          {item.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </tr>
+                  </Fragment>
+                )
+              })}
             </tbody>
           </table>
         )}

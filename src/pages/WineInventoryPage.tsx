@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useInvoices } from '../hooks/useInvoices'
 import { useWineBalances } from '../hooks/useWines'
@@ -44,22 +44,31 @@ export function WineInventoryPage() {
             <thead>
               <tr>
                 <th>Wine</th>
-                <th className="col-country">Country</th>
                 <th className="numeric">Balance in Bottles</th>
               </tr>
             </thead>
             <tbody>
-              {balances.map(({ wine, balanceInBottles }) => (
-                <tr key={wine.id}>
-                  <td>
-                    <Link className="row-link" to={`/wines/${wine.id}`}>
-                      {wine.name}
-                    </Link>
-                  </td>
-                  <td className="col-country">{wine.country ?? '-'}</td>
-                  <td className="numeric">{balanceInBottles}</td>
-                </tr>
-              ))}
+              {balances.map(({ wine, balanceInBottles }, index) => {
+                const previousCountry = index > 0 ? balances[index - 1].wine.country : undefined
+                const showGroupHeading = sortBy === 'country' && wine.country !== previousCountry
+                return (
+                  <Fragment key={wine.id}>
+                    {showGroupHeading && (
+                      <tr className="data-table__group-row">
+                        <td colSpan={2}>{wine.country ?? 'Unknown country'}</td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td>
+                        <Link className="row-link" to={`/wines/${wine.id}`}>
+                          {wine.name}
+                        </Link>
+                      </td>
+                      <td className="numeric">{balanceInBottles}</td>
+                    </tr>
+                  </Fragment>
+                )
+              })}
             </tbody>
           </table>
         )}

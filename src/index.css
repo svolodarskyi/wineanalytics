@@ -270,7 +270,8 @@ table {
   }
 }
 
-.card + .card {
+.card + .card,
+.two-col + .card {
   margin-top: 16px;
 }
 
@@ -335,14 +336,27 @@ table {
   letter-spacing: 0.04em;
 }
 
-.data-table .col-country {
-  /* A country name never needs much room; let the name/actions columns
-     take the space a stretched table would otherwise give this one. */
-  width: 140px;
-}
-
 .data-table tbody tr:hover {
   background: var(--bg-subtle);
+}
+
+.data-table tbody tr.data-table__group-row td {
+  padding-top: 16px;
+  padding-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: none;
+}
+
+.data-table tbody tr.data-table__group-row:hover {
+  background: none;
+}
+
+.data-table tbody tr.data-table__group-row:first-child td {
+  padding-top: 0;
 }
 
 .data-table tbody tr.data-table__row--clickable {

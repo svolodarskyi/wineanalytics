@@ -73,9 +73,13 @@ export function InvoicesPage() {
             </thead>
             <tbody>
               {invoices.map((invoice) => (
-                <tr key={invoice.id}>
+                <tr
+                  key={invoice.id}
+                  className="data-table__row--clickable"
+                  onClick={() => navigate(`/invoices/${invoice.id}`)}
+                >
                   <td>
-                    <Link className="row-link" to={`/invoices/${invoice.id}`}>
+                    <Link className="row-link" to={`/invoices/${invoice.id}`} onClick={(e) => e.stopPropagation()}>
                       {invoice.extracted.vendorMatch.vendorNameRaw}
                     </Link>
                   </td>

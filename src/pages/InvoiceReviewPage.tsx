@@ -99,73 +99,68 @@ export function InvoiceReviewPage() {
           )}
         </div>
 
-        <div className="stack">
-          <div className="card">
-            <h2>Extracted information</h2>
-            <table className="data-table data-table--compact">
-              <tbody>
-                <tr>
-                  <th>Invoice date</th>
-                  <td>{formatDate(invoice.extracted.invoiceDate)}</td>
-                </tr>
-                <tr>
-                  <th>Total amount</th>
-                  <td>{formatCurrency(invoice.extracted.totalAmount)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div className="card">
+          <h2>Extracted information</h2>
+          <table className="data-table data-table--compact">
+            <tbody>
+              <tr>
+                <th>Invoice date</th>
+                <td>{formatDate(invoice.extracted.invoiceDate)}</td>
+              </tr>
+              <tr>
+                <th>Total amount</th>
+                <td>{formatCurrency(invoice.extracted.totalAmount)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-          <div className="card">
-            <h2>Vendor match</h2>
-            {isProcessing ? (
-              <p className="spinner-text">Matching vendor...</p>
+      <div className="card">
+        <h2>Vendor match</h2>
+        {isProcessing ? (
+          <p className="spinner-text">Matching vendor...</p>
+        ) : (
+          <div className="stack">
+            <div className="match-row">
+              <span className="match-row__label">
+                {vendorName ?? `"${vendorMatch.vendorNameRaw}" (no match found)`}
+              </span>
+              {vendorMatch.status !== 'changed' && <ConfidenceBadge confidence={vendorMatch.confidence} />}
+              {(vendorMatch.status === 'confirmed' || vendorMatch.status === 'changed') && (
+                <span className="badge badge--confirmed">Resolved</span>
+              )}
+            </div>
+            {activePicker === 'vendor' ? (
+              <EntityPicker
+                items={vendors ?? []}
+                searchLabel="Search vendors"
+                submitLabel="Set vendor"
+                onCancel={() => setActivePicker(null)}
+                onSelect={(vendorId) => {
+                  if (!invoiceId) return
+                  selectVendorMatch.mutate({ invoiceId, vendorId }, { onSuccess: () => setActivePicker(null) })
+                }}
+              />
             ) : (
-              <div className="stack">
-                <div className="match-row">
-                  <span className="match-row__label">
-                    {vendorName ?? `"${vendorMatch.vendorNameRaw}" (no match found)`}
-                  </span>
-                  {vendorMatch.status !== 'changed' && <ConfidenceBadge confidence={vendorMatch.confidence} />}
-                  {(vendorMatch.status === 'confirmed' || vendorMatch.status === 'changed') && (
-                    <span className="badge badge--confirmed">Resolved</span>
-                  )}
-                </div>
-                {activePicker === 'vendor' ? (
-                  <EntityPicker
-                    items={vendors ?? []}
-                    searchLabel="Search vendors"
-                    submitLabel="Set vendor"
-                    onCancel={() => setActivePicker(null)}
-                    onSelect={(vendorId) => {
-                      if (!invoiceId) return
-                      selectVendorMatch.mutate(
-                        { invoiceId, vendorId },
-                        { onSuccess: () => setActivePicker(null) },
-                      )
-                    }}
-                  />
-                ) : (
-                  <div className="picker">
-                    {vendorMatch.status === 'suggested' && (
-                      <button
-                        type="button"
-                        className="btn btn--small btn--primary"
-                        disabled={confirmVendorMatch.isPending}
-                        onClick={() => invoiceId && confirmVendorMatch.mutate(invoiceId)}
-                      >
-                        Confirm
-                      </button>
-                    )}
-                    <button type="button" className="btn btn--small" onClick={() => setActivePicker('vendor')}>
-                      {vendorMatch.vendorId ? 'Change' : 'Select vendor'}
-                    </button>
-                  </div>
+              <div className="picker">
+                {vendorMatch.status === 'suggested' && (
+                  <button
+                    type="button"
+                    className="btn btn--small btn--primary"
+                    disabled={confirmVendorMatch.isPending}
+                    onClick={() => invoiceId && confirmVendorMatch.mutate(invoiceId)}
+                  >
+                    Confirm
+                  </button>
                 )}
+                <button type="button" className="btn btn--small" onClick={() => setActivePicker('vendor')}>
+                  {vendorMatch.vendorId ? 'Change' : 'Select vendor'}
+                </button>
               </div>
             )}
           </div>
-        </div>
+        )}
       </div>
 
       <div className="card">
