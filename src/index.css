@@ -301,6 +301,25 @@ table {
   min-width: 0;
 }
 
+.data-table--fit {
+  /* Sizes to its content instead of stretching to fill the card, so a
+     couple of short columns don't end up stranded far apart; still
+     shrinks to fit a narrow screen since it's capped at 100%. */
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.data-table--fit th,
+.data-table--fit td {
+  padding-right: 40px;
+}
+
+.data-table--fit th:last-child,
+.data-table--fit td:last-child {
+  padding-right: 12px;
+}
+
 .data-table th,
 .data-table td {
   text-align: left;
