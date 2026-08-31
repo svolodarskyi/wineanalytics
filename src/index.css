@@ -355,10 +355,6 @@ table {
   background: none;
 }
 
-.data-table tbody tr.data-table__group-row:first-child td {
-  padding-top: 0;
-}
-
 .data-table tbody tr.data-table__row--clickable {
   cursor: pointer;
 }
