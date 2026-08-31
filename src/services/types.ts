@@ -38,7 +38,7 @@ export interface WineService {
   setActive(id: string, active: boolean): Promise<Wine>
   /** Permanently removes a wine that has never appeared on any invoice. Throws if it has purchase history - deactivate instead. */
   delete(id: string): Promise<void>
-  getBalances(): Promise<WineBalance[]>
+  getBalances(options?: { sortBy?: WineSortBy }): Promise<WineBalance[]>
   getPurchaseHistory(id: string): Promise<PurchaseHistoryEntry[]>
 }
 

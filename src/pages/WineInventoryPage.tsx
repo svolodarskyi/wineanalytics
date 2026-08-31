@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useInvoices } from '../hooks/useInvoices'
 import { useWineBalances } from '../hooks/useWines'
+import type { WineSortBy } from '../services'
 
 export function WineInventoryPage() {
-  const { data: balances, isLoading, error } = useWineBalances()
+  const [sortBy, setSortBy] = useState<WineSortBy>('name')
+  const { data: balances, isLoading, error } = useWineBalances(sortBy)
   const { data: pendingInvoices } = useInvoices('not_approved')
 
   return (
@@ -22,6 +25,13 @@ export function WineInventoryPage() {
         </div>
       )}
 
+      <div className="inline-form">
+        <select aria-label="Sort by" value={sortBy} onChange={(event) => setSortBy(event.target.value as WineSortBy)}>
+          <option value="name">Sort by name</option>
+          <option value="country">Sort by country</option>
+        </select>
+      </div>
+
       {error && <p className="notice notice--error">Could not load wine balances.</p>}
 
       <div className="card">
@@ -30,10 +40,11 @@ export function WineInventoryPage() {
           <p className="empty-state">No wines yet. Add wines from Settings to get started.</p>
         )}
         {!!balances?.length && (
-          <table className="data-table data-table--auto-width">
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Wine</th>
+                <th>Country</th>
                 <th className="numeric">Balance in Bottles</th>
               </tr>
             </thead>
@@ -45,6 +56,7 @@ export function WineInventoryPage() {
                       {wine.name}
                     </Link>
                   </td>
+                  <td>{wine.country ?? '-'}</td>
                   <td className="numeric">{balanceInBottles}</td>
                 </tr>
               ))}

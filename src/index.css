@@ -300,24 +300,6 @@ table {
   min-width: 0;
 }
 
-.data-table--auto-width {
-  /* Fluid, not a fixed pixel size: fills narrow screens, caps on wide ones
-     so the balance column doesn't end up stranded far from the wine name. */
-  width: 100%;
-  max-width: 420px;
-  min-width: 0;
-}
-
-.data-table--auto-width th,
-.data-table--auto-width td {
-  padding-right: 32px;
-}
-
-.data-table--auto-width th:last-child,
-.data-table--auto-width td:last-child {
-  padding-right: 12px;
-}
-
 .data-table th,
 .data-table td {
   text-align: left;
