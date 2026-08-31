@@ -33,8 +33,8 @@ export interface WineListOptions extends ListOptions {
 export interface WineService {
   list(options?: WineListOptions): Promise<Wine[]>
   get(id: string): Promise<Wine | null>
-  create(input: { name: string; country?: string | null }): Promise<Wine>
-  update(id: string, input: { name: string; country?: string | null }): Promise<Wine>
+  create(input: { name: string; country?: string | null; imageDataUrl?: string | null }): Promise<Wine>
+  update(id: string, input: { name: string; country?: string | null; imageDataUrl?: string | null }): Promise<Wine>
   setActive(id: string, active: boolean): Promise<Wine>
   /** Permanently removes a wine that has never appeared on any invoice. Throws if it has purchase history - deactivate instead. */
   delete(id: string): Promise<void>

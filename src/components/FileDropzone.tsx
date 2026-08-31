@@ -1,17 +1,9 @@
 import { useRef, useState, type ChangeEvent } from 'react'
+import { readFileAsDataUrl } from '../utils/readFileAsDataUrl'
 
 interface FileDropzoneProps {
   onFileSelected: (file: { fileName: string; fileType: 'image' | 'pdf'; fileDataUrl: string }) => void
   disabled?: boolean
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file.'))
-    reader.readAsDataURL(file)
-  })
 }
 
 export function FileDropzone({ onFileSelected, disabled }: FileDropzoneProps) {

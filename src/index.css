@@ -345,12 +345,16 @@ table {
   background: var(--bg-subtle);
 }
 
+.data-table tbody tr.data-table__row--clickable {
+  cursor: pointer;
+}
+
 .data-table td.numeric,
 .data-table th.numeric {
   text-align: right;
 }
 
-.data-table a.row-link {
+.data-table .row-link {
   color: var(--text-h);
   text-decoration: none;
   font-weight: 500;
@@ -358,6 +362,26 @@ table {
 
 .data-table a.row-link:hover {
   color: var(--accent);
+}
+
+.entity-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  flex-shrink: 0;
+}
+
+.entity-thumb--large {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+}
+
+.entity-thumb--empty {
+  display: inline-block;
 }
 
 .empty-state {

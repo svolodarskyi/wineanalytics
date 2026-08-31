@@ -34,6 +34,7 @@ export function SettingsWinesPage() {
       onSetActive={(id, active) => setWineActive.mutateAsync({ id, active })}
       onDelete={(id) => deleteWine.mutateAsync(id)}
       showCountry
+      showImage
       sortBy={sortBy}
       sortOptions={SORT_OPTIONS}
       onSortByChange={(value) => setSortBy(value as WineSortBy)}

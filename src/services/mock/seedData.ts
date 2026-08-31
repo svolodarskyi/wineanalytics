@@ -11,7 +11,14 @@ export function seedWines(): Wine[] {
     { name: 'Antinori Tignanello', country: 'Italy' },
     { name: 'La Crema Pinot Noir', country: 'USA' },
   ]
-  return wines.map(({ name, country }) => ({ id: createId('wine'), name, country, active: true, createdAt: now }))
+  return wines.map(({ name, country }) => ({
+    id: createId('wine'),
+    name,
+    country,
+    imageDataUrl: null,
+    active: true,
+    createdAt: now,
+  }))
 }
 
 export function seedVendors(): Vendor[] {

@@ -8,6 +8,8 @@ export interface Wine {
   id: string
   name: string
   country: string | null
+  /** Data URL of an uploaded label/bottle photo, if any. */
+  imageDataUrl: string | null
   active: boolean
   createdAt: string
 }

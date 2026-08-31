@@ -22,28 +22,46 @@ describe('SettingsWinesPage', () => {
     resetTestServices()
   })
 
-  it('creates, edits, and deactivates a wine', async () => {
+  it('opens a detail popup on row click to edit and deactivate a wine', async () => {
     const user = userEvent.setup()
     renderWithProviders(<SettingsWinesPage />)
 
     await createWine(user, 'Test Wine XYZ')
     const row = (await screen.findByText('Test Wine XYZ')).closest('tr') as HTMLElement
-    expect(row).toBeInTheDocument()
 
-    await user.click(within(row).getByRole('button', { name: /edit/i }))
-    const input = within(row).getAllByRole('textbox')[0]
-    await user.clear(input)
-    await user.type(input, 'Test Wine Renamed')
-    await user.click(within(row).getByRole('button', { name: /save/i }))
+    // Clicking the row opens the detail popup directly - no separate Edit click needed.
+    await user.click(row)
+    const modal = screen.getByRole('dialog')
+    const nameInput = within(modal).getByLabelText('Name')
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Test Wine Renamed')
+    await user.click(within(modal).getByRole('button', { name: /^save$/i }))
     expect(await screen.findByText('Test Wine Renamed')).toBeInTheDocument()
 
     const renamedRow = screen.getByText('Test Wine Renamed').closest('tr') as HTMLElement
-    await user.click(within(renamedRow).getByRole('button', { name: /deactivate/i }))
+    await user.click(renamedRow)
+    const modal2 = screen.getByRole('dialog')
+    await user.click(within(modal2).getByRole('button', { name: /deactivate/i }))
+    await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByText('Test Wine Renamed')).not.toBeInTheDocument())
 
     await user.click(screen.getByLabelText(/show inactive/i))
     const reappeared = await screen.findByText('Test Wine Renamed')
     expect(reappeared.closest('tr')).toHaveTextContent('Inactive')
+  })
+
+  it('deletes a wine that has never been used, from the detail popup', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderWithProviders(<SettingsWinesPage />)
+
+    await createWine(user, 'Deletable Wine')
+    const row = (await screen.findByText('Deletable Wine')).closest('tr') as HTMLElement
+    await user.click(row)
+    const modal = screen.getByRole('dialog')
+    await user.click(within(modal).getByRole('button', { name: /delete/i }))
+
+    await waitFor(() => expect(screen.queryByText('Deletable Wine')).not.toBeInTheDocument())
   })
 
   it('rejects creating a wine with a duplicate name', async () => {
