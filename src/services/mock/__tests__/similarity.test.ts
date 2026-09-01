@@ -57,4 +57,13 @@ describe('findBestMatch', () => {
   it('returns null when there are no candidates', () => {
     expect(findBestMatch('anything', [])).toBeNull()
   })
+
+  it('matches against invoiceName when it scores better than the display name', () => {
+    const withInvoiceName = [
+      { id: '1', name: 'Caymus Vineyards Cabernet Sauvignon Napa Valley', active: true, invoiceName: 'CAYMUS CAB 750' },
+    ]
+    const best = findBestMatch('CAYMUS CAB 750', withInvoiceName)
+    expect(best?.id).toBe('1')
+    expect(best?.score).toBe(1)
+  })
 })

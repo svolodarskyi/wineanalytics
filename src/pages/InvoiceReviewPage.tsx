@@ -177,13 +177,16 @@ export function InvoiceReviewPage() {
         ) : (
           <div className="stack">
             <div className="match-row">
-              <span className="match-row__label">
-                {vendorName ?? `"${vendorMatch.vendorNameRaw}" (no match found)`}
-              </span>
-              {vendorMatch.status !== 'changed' && <ConfidenceBadge confidence={vendorMatch.confidence} />}
-              {(vendorMatch.status === 'confirmed' || vendorMatch.status === 'changed') && (
-                <span className="badge badge--confirmed">Resolved</span>
+              <span className="match-row__label">{vendorName ?? 'No match found'}</span>
+              {vendorMatch.vendorNameRaw && (
+                <p className="match-row__raw">Extracted from invoice: "{vendorMatch.vendorNameRaw}"</p>
               )}
+              <div className="match-row__badges">
+                {vendorMatch.status !== 'changed' && <ConfidenceBadge confidence={vendorMatch.confidence} />}
+                {(vendorMatch.status === 'confirmed' || vendorMatch.status === 'changed') && (
+                  <span className="badge badge--confirmed">Resolved</span>
+                )}
+              </div>
             </div>
             <div className="picker">
               {vendorMatch.status === 'suggested' && (
@@ -206,7 +209,7 @@ export function InvoiceReviewPage() {
                   items={vendors ?? []}
                   searchLabel="Search vendors"
                   entityLabel="vendor"
-                  onCreateNew={(name) => createVendor.mutateAsync({ name })}
+                  onCreateNew={(name) => createVendor.mutateAsync({ name, invoiceName: name })}
                   onSelect={(vendorId) => {
                     if (!invoiceId) return
                     selectVendorMatch.mutate({ invoiceId, vendorId }, { onSuccess: () => setActivePicker(null) })
@@ -295,11 +298,13 @@ function LineItemRow({
       <td>
         <div className="stack">
           <div className="match-row">
-            <span className="match-row__label">{wineName ?? `"${line.itemNameRaw}" (no match found)`}</span>
-            {line.skuMatch.status !== 'changed' && <ConfidenceBadge confidence={line.skuMatch.confidence} />}
-            {(line.skuMatch.status === 'confirmed' || line.skuMatch.status === 'changed') && (
-              <span className="badge badge--confirmed">Resolved</span>
-            )}
+            <span className="match-row__label">{wineName ?? 'No match found'}</span>
+            <div className="match-row__badges">
+              {line.skuMatch.status !== 'changed' && <ConfidenceBadge confidence={line.skuMatch.confidence} />}
+              {(line.skuMatch.status === 'confirmed' || line.skuMatch.status === 'changed') && (
+                <span className="badge badge--confirmed">Resolved</span>
+              )}
+            </div>
           </div>
           <div className="picker">
             {line.skuMatch.status === 'suggested' && (
@@ -317,7 +322,7 @@ function LineItemRow({
                 items={wines}
                 searchLabel="Search wines"
                 entityLabel="wine"
-                onCreateNew={(name) => createWine.mutateAsync({ name })}
+                onCreateNew={(name) => createWine.mutateAsync({ name, invoiceName: name })}
                 onSelect={onSelect}
               />
             </Modal>

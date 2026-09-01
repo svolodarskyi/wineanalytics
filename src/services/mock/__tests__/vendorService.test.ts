@@ -27,6 +27,20 @@ describe('mock vendor service', () => {
     expect(updated.name).toBe('New Name')
   })
 
+  it('stores an invoice name distinct from the display name, defaulting to null', async () => {
+    const withoutInvoiceName = await services.vendors.create({ name: 'Plain Vendor' })
+    expect(withoutInvoiceName.invoiceName).toBeNull()
+
+    const withInvoiceName = await services.vendors.create({ name: 'Rutherford Imports', invoiceName: 'RUTHERFORD INC' })
+    expect(withInvoiceName.invoiceName).toBe('RUTHERFORD INC')
+
+    const updated = await services.vendors.update(withInvoiceName.id, {
+      name: 'Rutherford Imports',
+      invoiceName: 'RUTHERFORD IMPORTS LLC',
+    })
+    expect(updated.invoiceName).toBe('RUTHERFORD IMPORTS LLC')
+  })
+
   it('deactivating hides a vendor from the default list', async () => {
     const vendor = await services.vendors.create({ name: 'Fading Vendor' })
     await services.vendors.setActive(vendor.id, false)

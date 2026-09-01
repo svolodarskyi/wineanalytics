@@ -49,15 +49,22 @@ export interface BestMatch {
   score: number
 }
 
-/** Simulates an AI matching suggestion by picking the closest-named candidate. */
-export function findBestMatch<T extends { id: string; name: string; active: boolean }>(
+/**
+ * Simulates an AI matching suggestion by picking the closest-named candidate.
+ * Checks both the display name and, if set, the invoice name - whichever is
+ * closer to what's actually printed on the invoice wins.
+ */
+export function findBestMatch<T extends { id: string; name: string; active: boolean; invoiceName?: string | null }>(
   rawName: string,
   candidates: T[],
 ): BestMatch | null {
   let best: BestMatch | null = null
   for (const candidate of candidates) {
     if (!candidate.active) continue
-    const score = stringSimilarity(rawName, candidate.name)
+    const score = Math.max(
+      stringSimilarity(rawName, candidate.name),
+      candidate.invoiceName ? stringSimilarity(rawName, candidate.invoiceName) : 0,
+    )
     if (!best || score > best.score) {
       best = { id: candidate.id, score }
     }

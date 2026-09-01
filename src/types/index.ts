@@ -7,6 +7,8 @@ export type InvoiceStatus = 'processing' | 'not_approved' | 'approved'
 export interface Wine {
   id: string
   name: string
+  /** Name as it typically appears on vendor invoices, if different from the display name. Falls back to `name` for matching when unset. */
+  invoiceName: string | null
   country: string | null
   /** Data URL of an uploaded label/bottle photo, if any. */
   imageDataUrl: string | null
@@ -17,6 +19,8 @@ export interface Wine {
 export interface Vendor {
   id: string
   name: string
+  /** Name as it typically appears on invoices, if different from the display name. Falls back to `name` for matching when unset. */
+  invoiceName: string | null
   active: boolean
   createdAt: string
 }

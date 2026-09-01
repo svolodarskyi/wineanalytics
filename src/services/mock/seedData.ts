@@ -14,6 +14,7 @@ export function seedWines(): Wine[] {
   return wines.map(({ name, country }) => ({
     id: createId('wine'),
     name,
+    invoiceName: null,
     country,
     imageDataUrl: null,
     active: true,
@@ -24,5 +25,5 @@ export function seedWines(): Wine[] {
 export function seedVendors(): Vendor[] {
   const now = new Date().toISOString()
   const names = ["Winebow Imports", "Southern Glazer's Wine & Spirits", 'Vintner Select']
-  return names.map((name) => ({ id: createId('vendor'), name, active: true, createdAt: now }))
+  return names.map((name) => ({ id: createId('vendor'), name, invoiceName: null, active: true, createdAt: now }))
 }

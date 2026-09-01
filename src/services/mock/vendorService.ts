@@ -26,23 +26,29 @@ export function createMockVendorService(store: MockStore, latencyMs: number): Ve
       return store.findVendor(id) ?? null
     },
 
-    async create(input: { name: string }): Promise<Vendor> {
+    async create(input: { name: string; invoiceName?: string | null }): Promise<Vendor> {
       await delay(latencyMs)
       const name = input.name.trim()
       if (!name) throw new Error('Vendor name is required.')
       const duplicate = store.vendors.some((vendor) => vendor.name.toLowerCase() === name.toLowerCase())
       if (duplicate) throw new Error(`A vendor named "${name}" already exists.`)
-      const vendor: Vendor = { id: createId('vendor'), name, active: true, createdAt: new Date().toISOString() }
+      const vendor: Vendor = {
+        id: createId('vendor'),
+        name,
+        invoiceName: input.invoiceName?.trim() || null,
+        active: true,
+        createdAt: new Date().toISOString(),
+      }
       store.vendors.push(vendor)
       return vendor
     },
 
-    async update(id: string, input: { name: string }): Promise<Vendor> {
+    async update(id: string, input: { name: string; invoiceName?: string | null }): Promise<Vendor> {
       await delay(latencyMs)
       if (!store.findVendor(id)) throw new Error('Vendor not found.')
       const name = input.name.trim()
       if (!name) throw new Error('Vendor name is required.')
-      return store.updateVendor(id, (vendor) => ({ ...vendor, name }))
+      return store.updateVendor(id, (vendor) => ({ ...vendor, name, invoiceName: input.invoiceName?.trim() || null }))
     },
 
     async setActive(id: string, active: boolean): Promise<Vendor> {

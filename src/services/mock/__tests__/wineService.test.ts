@@ -34,6 +34,20 @@ describe('mock wine service', () => {
     expect(updated.id).toBe(wine.id)
   })
 
+  it('stores an invoice name distinct from the display name, defaulting to null', async () => {
+    const withoutInvoiceName = await services.wines.create({ name: 'Plain Wine' })
+    expect(withoutInvoiceName.invoiceName).toBeNull()
+
+    const withInvoiceName = await services.wines.create({ name: 'Caymus Cabernet', invoiceName: 'CAYMUS CAB 750ML' })
+    expect(withInvoiceName.invoiceName).toBe('CAYMUS CAB 750ML')
+
+    const updated = await services.wines.update(withInvoiceName.id, {
+      name: 'Caymus Cabernet',
+      invoiceName: 'CAYMUS CS 750',
+    })
+    expect(updated.invoiceName).toBe('CAYMUS CS 750')
+  })
+
   it('deactivating a wine hides it from the default list but keeps it with includeInactive', async () => {
     const wine = await services.wines.create({ name: 'Soon Retired' })
     await services.wines.setActive(wine.id, false)

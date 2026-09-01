@@ -5,6 +5,7 @@ import { Modal } from './Modal'
 interface Entity {
   id: string
   name: string
+  invoiceName?: string | null
   active: boolean
   country?: string | null
   imageDataUrl?: string | null
@@ -12,6 +13,7 @@ interface Entity {
 
 interface EntityInput {
   name: string
+  invoiceName?: string | null
   country?: string
   imageDataUrl?: string | null
 }
@@ -97,6 +99,7 @@ export function EntityManager({
 }: EntityManagerProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newName, setNewName] = useState('')
+  const [newInvoiceName, setNewInvoiceName] = useState('')
   const [newCountry, setNewCountry] = useState('')
   const [newImage, setNewImage] = useState<string | null>(null)
   const [createError, setCreateError] = useState<string | null>(null)
@@ -104,6 +107,7 @@ export function EntityManager({
 
   const [detailItem, setDetailItem] = useState<Entity | null>(null)
   const [detailName, setDetailName] = useState('')
+  const [detailInvoiceName, setDetailInvoiceName] = useState('')
   const [detailCountry, setDetailCountry] = useState('')
   const [detailImage, setDetailImage] = useState<string | null>(null)
   const [detailError, setDetailError] = useState<string | null>(null)
@@ -112,6 +116,7 @@ export function EntityManager({
 
   function openCreateModal() {
     setNewName('')
+    setNewInvoiceName('')
     setNewCountry('')
     setNewImage(null)
     setCreateError(null)
@@ -123,7 +128,7 @@ export function EntityManager({
     setCreateError(null)
     setIsCreating(true)
     try {
-      await onCreate({ name: newName, country: newCountry, imageDataUrl: newImage })
+      await onCreate({ name: newName, invoiceName: newInvoiceName, country: newCountry, imageDataUrl: newImage })
       setIsCreateOpen(false)
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Could not create.')
@@ -135,6 +140,7 @@ export function EntityManager({
   function openDetail(entity: Entity) {
     setDetailItem(entity)
     setDetailName(entity.name)
+    setDetailInvoiceName(entity.invoiceName ?? '')
     setDetailCountry(entity.country ?? '')
     setDetailImage(entity.imageDataUrl ?? null)
     setDetailError(null)
@@ -145,7 +151,12 @@ export function EntityManager({
     setDetailError(null)
     setIsSaving(true)
     try {
-      await onUpdate(detailItem.id, { name: detailName, country: detailCountry, imageDataUrl: detailImage })
+      await onUpdate(detailItem.id, {
+        name: detailName,
+        invoiceName: detailInvoiceName,
+        country: detailCountry,
+        imageDataUrl: detailImage,
+      })
       setDetailItem(null)
     } catch (err) {
       setDetailError(err instanceof Error ? err.message : 'Could not save.')
@@ -201,6 +212,15 @@ export function EntityManager({
                 autoFocus
               />
             </div>
+            <div className="field">
+              <label htmlFor="new-entity-invoice-name">Invoice name</label>
+              <input
+                id="new-entity-invoice-name"
+                value={newInvoiceName}
+                onChange={(event) => setNewInvoiceName(event.target.value)}
+                placeholder="Name as it appears on invoices, if different"
+              />
+            </div>
             {showCountry && (
               <div className="field">
                 <label htmlFor="new-entity-country">Country</label>
@@ -235,6 +255,15 @@ export function EntityManager({
                 value={detailName}
                 onChange={(event) => setDetailName(event.target.value)}
                 autoFocus
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="detail-entity-invoice-name">Invoice name</label>
+              <input
+                id="detail-entity-invoice-name"
+                value={detailInvoiceName}
+                onChange={(event) => setDetailInvoiceName(event.target.value)}
+                placeholder="Name as it appears on invoices, if different"
               />
             </div>
             {showCountry && (

@@ -13,3 +13,5 @@ mock uploading of data
 can log orders? so everythign in one place. so other people can see?
 
 how fast are being counsumed. turnaround time?
+
+do we wan tot see net or discount as well?

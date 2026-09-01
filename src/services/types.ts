@@ -31,8 +31,16 @@ export type WineListOptions = ListOptions
 export interface WineService {
   list(options?: WineListOptions): Promise<Wine[]>
   get(id: string): Promise<Wine | null>
-  create(input: { name: string; country?: string | null; imageDataUrl?: string | null }): Promise<Wine>
-  update(id: string, input: { name: string; country?: string | null; imageDataUrl?: string | null }): Promise<Wine>
+  create(input: {
+    name: string
+    invoiceName?: string | null
+    country?: string | null
+    imageDataUrl?: string | null
+  }): Promise<Wine>
+  update(
+    id: string,
+    input: { name: string; invoiceName?: string | null; country?: string | null; imageDataUrl?: string | null },
+  ): Promise<Wine>
   setActive(id: string, active: boolean): Promise<Wine>
   /** Permanently removes a wine that has never appeared on any invoice. Throws if it has purchase history - deactivate instead. */
   delete(id: string): Promise<void>
@@ -43,8 +51,8 @@ export interface WineService {
 export interface VendorService {
   list(options?: ListOptions): Promise<Vendor[]>
   get(id: string): Promise<Vendor | null>
-  create(input: { name: string }): Promise<Vendor>
-  update(id: string, input: { name: string }): Promise<Vendor>
+  create(input: { name: string; invoiceName?: string | null }): Promise<Vendor>
+  update(id: string, input: { name: string; invoiceName?: string | null }): Promise<Vendor>
   setActive(id: string, active: boolean): Promise<Vendor>
   /** Permanently removes a vendor that has never appeared on any invoice. Throws if it has invoice history - deactivate instead. */
   delete(id: string): Promise<void>

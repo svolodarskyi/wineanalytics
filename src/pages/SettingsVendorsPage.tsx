@@ -22,8 +22,8 @@ export function SettingsVendorsPage() {
       onQueryChange={setQuery}
       includeInactive={includeInactive}
       onIncludeInactiveChange={setIncludeInactive}
-      onCreate={(input) => createVendor.mutateAsync({ name: input.name })}
-      onUpdate={(id, input) => updateVendor.mutateAsync({ id, name: input.name })}
+      onCreate={(input) => createVendor.mutateAsync({ name: input.name, invoiceName: input.invoiceName })}
+      onUpdate={(id, input) => updateVendor.mutateAsync({ id, name: input.name, invoiceName: input.invoiceName })}
       onSetActive={(id, active) => setVendorActive.mutateAsync({ id, active })}
       onDelete={(id) => deleteVendor.mutateAsync(id)}
     />

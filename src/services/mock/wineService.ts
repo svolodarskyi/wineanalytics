@@ -30,7 +30,12 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
       return store.findWine(id) ?? null
     },
 
-    async create(input: { name: string; country?: string | null; imageDataUrl?: string | null }): Promise<Wine> {
+    async create(input: {
+      name: string
+      invoiceName?: string | null
+      country?: string | null
+      imageDataUrl?: string | null
+    }): Promise<Wine> {
       await delay(latencyMs)
       const name = input.name.trim()
       if (!name) throw new Error('Wine name is required.')
@@ -39,6 +44,7 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
       const wine: Wine = {
         id: createId('wine'),
         name,
+        invoiceName: input.invoiceName?.trim() || null,
         country: input.country?.trim() || null,
         imageDataUrl: input.imageDataUrl ?? null,
         active: true,
@@ -50,7 +56,7 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
 
     async update(
       id: string,
-      input: { name: string; country?: string | null; imageDataUrl?: string | null },
+      input: { name: string; invoiceName?: string | null; country?: string | null; imageDataUrl?: string | null },
     ): Promise<Wine> {
       await delay(latencyMs)
       if (!store.findWine(id)) throw new Error('Wine not found.')
@@ -59,6 +65,7 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
       return store.updateWine(id, (wine) => ({
         ...wine,
         name,
+        invoiceName: input.invoiceName?.trim() || null,
         country: input.country?.trim() || null,
         imageDataUrl: input.imageDataUrl !== undefined ? input.imageDataUrl : wine.imageDataUrl,
       }))

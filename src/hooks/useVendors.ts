@@ -25,7 +25,7 @@ function useInvalidateVendors() {
 export function useCreateVendor() {
   const invalidate = useInvalidateVendors()
   return useMutation({
-    mutationFn: (input: { name: string }) => services.vendors.create(input),
+    mutationFn: (input: { name: string; invoiceName?: string | null }) => services.vendors.create(input),
     onSuccess: invalidate,
   })
 }
@@ -33,7 +33,8 @@ export function useCreateVendor() {
 export function useUpdateVendor() {
   const invalidate = useInvalidateVendors()
   return useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) => services.vendors.update(id, { name }),
+    mutationFn: ({ id, ...input }: { id: string; name: string; invoiceName?: string | null }) =>
+      services.vendors.update(id, input),
     onSuccess: invalidate,
   })
 }

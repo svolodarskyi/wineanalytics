@@ -40,8 +40,12 @@ function useInvalidateWines() {
 export function useCreateWine() {
   const invalidate = useInvalidateWines()
   return useMutation({
-    mutationFn: (input: { name: string; country?: string | null; imageDataUrl?: string | null }) =>
-      services.wines.create(input),
+    mutationFn: (input: {
+      name: string
+      invoiceName?: string | null
+      country?: string | null
+      imageDataUrl?: string | null
+    }) => services.wines.create(input),
     onSuccess: invalidate,
   })
 }
@@ -55,6 +59,7 @@ export function useUpdateWine() {
     }: {
       id: string
       name: string
+      invoiceName?: string | null
       country?: string | null
       imageDataUrl?: string | null
     }) => services.wines.update(id, input),
