@@ -24,7 +24,7 @@ export function WineInventoryPage() {
 
       {error && <p className="notice notice--error">Could not load wine balances.</p>}
 
-      <div className="card card--narrow">
+      <div className="card">
         {isLoading && <p className="spinner-text">Loading...</p>}
         {!isLoading && balances?.length === 0 && (
           <p className="empty-state">No wines yet. Add wines from Settings to get started.</p>

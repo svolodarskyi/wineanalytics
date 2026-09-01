@@ -264,14 +264,6 @@ table {
   -webkit-overflow-scrolling: touch;
 }
 
-.card--narrow {
-  /* Fluid, not fixed: fills a narrow screen, caps on a wide one so a short
-     list (like wine balances) doesn't sit in a card with a huge empty
-     margin down one side. */
-  width: 100%;
-  max-width: 480px;
-}
-
 @media (max-width: 640px) {
   .card {
     padding: 14px;
