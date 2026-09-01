@@ -14,7 +14,7 @@ export function SettingsWinesPage() {
 
   return (
     <EntityManager
-      title="Settings: Wine SKUs"
+      title="Wine SKUs"
       singularLabel="wine"
       items={wines ?? []}
       isLoading={isLoading}

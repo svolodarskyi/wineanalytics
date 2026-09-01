@@ -229,7 +229,7 @@ export function EntityManager({
   return (
     <div>
       <div className="page-header">
-        <h1>{title}</h1>
+        <h2>{title}</h2>
         <button type="button" className="btn btn--primary" onClick={openCreateModal}>
           + New {singularLabel}
         </button>

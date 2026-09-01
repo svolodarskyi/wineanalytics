@@ -14,7 +14,7 @@ export function SettingsOpenAiPage() {
     <div>
       <div className="page-header">
         <div>
-          <h1>Settings: AI Requests</h1>
+          <h2>AI Requests</h2>
           <p className="page-header__meta">
             Every call to OpenAI for invoice image parsing, with its response and estimated cost. Local
             experimentation only - see VITE_OPENAI_API_KEY in your .env file.

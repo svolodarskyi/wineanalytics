@@ -14,7 +14,7 @@ export function SettingsVendorsPage() {
 
   return (
     <EntityManager
-      title="Settings: Vendors"
+      title="Vendors"
       singularLabel="vendor"
       items={vendors ?? []}
       isLoading={isLoading}

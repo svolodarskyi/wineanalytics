@@ -5,9 +5,7 @@ import { useAuth } from '../hooks/AuthContext'
 const NAV_LINKS = [
   { to: '/', label: 'Wine Inventory', end: true },
   { to: '/invoices', label: 'Invoices', end: false },
-  { to: '/settings/wines', label: 'Settings: Wines', end: false },
-  { to: '/settings/vendors', label: 'Settings: Vendors', end: false },
-  { to: '/settings/ai-requests', label: 'Settings: AI Requests', end: false },
+  { to: '/settings', label: 'Settings', end: false },
 ]
 
 export function AppLayout() {

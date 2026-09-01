@@ -1,10 +1,11 @@
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/AppLayout'
 import { RequireAuth } from './components/RequireAuth'
 import { InvoiceReviewPage } from './pages/InvoiceReviewPage'
 import { InvoicesPage } from './pages/InvoicesPage'
 import { LoginPage } from './pages/LoginPage'
 import { SettingsOpenAiPage } from './pages/SettingsOpenAiPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { SettingsVendorsPage } from './pages/SettingsVendorsPage'
 import { SettingsWinesPage } from './pages/SettingsWinesPage'
 import { WineDetailPage } from './pages/WineDetailPage'
@@ -26,9 +27,12 @@ export default function App() {
         <Route path="wines/:wineId" element={<WineDetailPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="invoices/:invoiceId" element={<InvoiceReviewPage />} />
-        <Route path="settings/wines" element={<SettingsWinesPage />} />
-        <Route path="settings/vendors" element={<SettingsVendorsPage />} />
-        <Route path="settings/ai-requests" element={<SettingsOpenAiPage />} />
+        <Route path="settings" element={<SettingsPage />}>
+          <Route index element={<Navigate to="wines" replace />} />
+          <Route path="wines" element={<SettingsWinesPage />} />
+          <Route path="vendors" element={<SettingsVendorsPage />} />
+          <Route path="ai-requests" element={<SettingsOpenAiPage />} />
+        </Route>
       </Route>
     </Routes>
   )
