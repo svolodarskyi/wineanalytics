@@ -188,26 +188,19 @@ create policy "authenticated full access" on wine_wines
 
 Storage buckets get an equivalent authenticated-only policy.
 
-## 5. Auth — built, not yet wired in
+## 5. Auth — done and live
 
-`src/services/supabase/client.ts` (lazy Supabase client, reads
-`VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY`) and
+`src/services/supabase/client.ts` (lazy Supabase client) and
 `src/services/supabase/authService.ts` (wraps
 `signInWithPassword`/`getSession`/`signOut`, satisfies the existing
-`AuthService` interface) exist now, with tests (`@supabase/supabase-js`
-added as a dependency). `AuthUser` in `src/types/index.ts` (`{id, email}`)
-already matched what Supabase Auth returns, so no type changes were needed.
+`AuthService` interface) are wired into the running app via
+`createSupabaseServices()` (§6). `AuthUser` in `src/types/index.ts`
+(`{id, email}`) already matched what Supabase Auth returns, so no type
+changes were needed.
 
-**Not yet wired into the running app** — `src/services/index.ts` still
-composes `createMockServices()`. Flipping it over waits on the rest of
-§6 (wines/vendors/invoices), since `Services` needs every sub-interface
-implemented together; a half-real composition isn't a real state to run
-the app in. The code is inert until then (confirmed: adding the dependency
-didn't move the production bundle size, since nothing imports it yet).
-
-You'll still need to create the demo user (or whichever real users) in
-Supabase Auth directly — that's a dashboard/CLI action, not something this
-plan scripts, since it's user/credential setup rather than schema.
+Demo user created via the Admin API - `demo@restaurant.com` / `password`,
+pre-confirmed. Verified end-to-end, including through the actual login
+form against the live project (§9).
 
 ## 6. Service layer
 
@@ -216,8 +209,9 @@ New `src/services/supabase/` folder, one file per interface
 `authService.ts`), each implementing the existing `Services` sub-interfaces
 from `src/services/types.ts` — the same contract the mock already satisfies,
 so no other file in the app changes. `src/services/index.ts` picks between
-`createMockServices()` and a new `createSupabaseServices()` based on whether
-`VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` are set.
+`createMockServices()` and `createSupabaseServices()` based on two separate
+flags: credentials present AND `VITE_USE_SUPABASE="true"` explicitly set -
+see §9 item 8 for why that's deliberately two gates, not one.
 
 `src/services/openai/client.ts` (the extraction call) and the matching logic
 in `src/services/mock/similarity.ts` are backend-agnostic already — they
@@ -318,8 +312,10 @@ pre-confirmed. Verified end-to-end with a real `signInWithPassword` call
 using the publishable key. This works right now, independent of the schema
 migration below.
 
-**Still blocked: nothing available can execute DDL.** Tried three things
-against this project, all as expected:
+**DDL execution note (resolved).** Nothing in `.env` could execute DDL
+directly - tried three things
+against this project, all as expected, before it got applied via the
+dashboard's SQL Editor instead:
 - Publishable key against the schema/RPC endpoints → rejected (by design,
   RLS-scoped data access only).
 - The new-format secret key against the Supabase Management API → `401`,
@@ -328,12 +324,6 @@ against this project, all as expected:
 - The secret key as a Postgres password against the connection pooler →
   `password authentication failed` (confirms the pooler host/port work, but
   API keys and the database password are different credentials entirely).
-
-To actually create the tables, either:
-- Paste the migration file's contents into the Supabase dashboard's SQL
-  Editor and run it there (fastest, no new credentials needed), or
-- Give me the actual database password (Project Settings → Database →
-  Connection string / "Reset database password") so I can run it directly.
 
 Existing mock-backed tests (68 of them) keep running unchanged throughout —
 they test against `MockStore`, not Supabase, so this migration doesn't put
@@ -348,10 +338,16 @@ depend on the migration having been applied anywhere.
   env vars at deploy time). §7's Edge Function / API-route proxy is
   explicitly skipped for now — known tradeoff, not revisited here.
 
-## 10. Open questions before I touch anything
+## 10. Open questions (all resolved)
 
-- Confirm the `wine_` prefix and table names above read right, or adjust.
-- The DDL in §2 uses `for all using (auth.role() = 'authenticated')` for
-  RLS — that's written against the legacy JWT auth model. Worth confirming
-  this still applies as-is under the newer publishable/secret key system on
-  this project, or whether the RLS policy syntax needs to change.
+- ~~Confirm the `wine_` prefix and table names read right~~ — used as-is,
+  migration applied without changes.
+- ~~Does `auth.role() = 'authenticated'` RLS still work under the newer
+  publishable/secret key system?~~ — yes, confirmed directly: an
+  unauthenticated insert was rejected, the same insert succeeded once
+  signed in, no policy changes needed. The publishable/secret key system
+  only changes how a request authenticates to PostgREST/Storage at the
+  gateway layer - `auth.role()`/`auth.uid()` inside RLS policies still
+  reflect the Supabase Auth session (or lack of one) exactly as before.
+
+No open questions remain from the original plan.
