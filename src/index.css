@@ -264,6 +264,14 @@ table {
   -webkit-overflow-scrolling: touch;
 }
 
+.card--narrow {
+  /* Fluid, not fixed: fills a narrow screen, caps on a wide one so a short
+     list (like wine balances) doesn't sit in a card with a huge empty
+     margin down one side. */
+  width: 100%;
+  max-width: 480px;
+}
+
 @media (max-width: 640px) {
   .card {
     padding: 14px;
@@ -301,25 +309,6 @@ table {
   min-width: 0;
 }
 
-.data-table--fit {
-  /* Sizes to its content instead of stretching to fill the card, so a
-     couple of short columns don't end up stranded far apart; still
-     shrinks to fit a narrow screen since it's capped at 100%. */
-  width: fit-content;
-  max-width: 100%;
-  min-width: 0;
-}
-
-.data-table--fit th,
-.data-table--fit td {
-  padding-right: 40px;
-}
-
-.data-table--fit th:last-child,
-.data-table--fit td:last-child {
-  padding-right: 12px;
-}
-
 .data-table th,
 .data-table td {
   text-align: left;
@@ -335,15 +324,12 @@ table {
     font-size: 13px;
   }
 
-  /* Keeps a long vendor/wine name from forcing the row (and the page) to
-     scroll horizontally on a phone; the rest of the row stays visible. */
+  /* Wraps a long vendor/wine name onto a second line instead of truncating
+     it, so the full name stays readable on a phone. */
   .data-table--compact td:first-child a {
     display: inline-block;
-    max-width: 42vw;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    vertical-align: bottom;
+    white-space: normal;
+    overflow-wrap: break-word;
   }
 }
 

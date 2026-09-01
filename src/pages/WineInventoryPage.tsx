@@ -24,13 +24,13 @@ export function WineInventoryPage() {
 
       {error && <p className="notice notice--error">Could not load wine balances.</p>}
 
-      <div className="card">
+      <div className="card card--narrow">
         {isLoading && <p className="spinner-text">Loading...</p>}
         {!isLoading && balances?.length === 0 && (
           <p className="empty-state">No wines yet. Add wines from Settings to get started.</p>
         )}
         {!!balances?.length && (
-          <table className="data-table data-table--fit data-table--compact">
+          <table className="data-table data-table--compact">
             <thead>
               <tr>
                 <th>Wine</th>
