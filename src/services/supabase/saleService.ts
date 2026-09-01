@@ -33,6 +33,57 @@ function throwIfError(error: { message: string } | null): void {
   if (error) throw new Error(error.message)
 }
 
+interface SaleInput {
+  soldAt: string
+  pourSizeId?: string | null
+  volumeMl?: number
+  quantity?: number
+  amount?: number | null
+}
+
+interface ResolvedSaleFields {
+  pour_size_id: string | null
+  volume_ml: number
+  quantity: number
+  amount: number | null
+}
+
+/** Shared by create and update: resolves pourSizeId-or-volumeMl to a canonical ml, and validates quantity/amount. */
+async function resolveSaleFields(supabase: SupabaseClient, input: SaleInput): Promise<ResolvedSaleFields> {
+  const quantity = input.quantity ?? 1
+  if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
+    throw new Error('Quantity must be a positive whole number.')
+  }
+
+  const amount = input.amount ?? null
+  if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
+    throw new Error('Amount must be a non-negative number.')
+  }
+
+  let volumeMl: number
+  let pourSizeId: string | null
+
+  if (input.pourSizeId) {
+    const { data: pourSize, error: pourSizeError } = await supabase
+      .from('wine_pour_sizes')
+      .select('id, volume_ml')
+      .eq('id', input.pourSizeId)
+      .maybeSingle()
+    throwIfError(pourSizeError)
+    if (!pourSize) throw new Error('Pour size not found.')
+    volumeMl = (pourSize as { volume_ml: number }).volume_ml
+    pourSizeId = input.pourSizeId
+  } else {
+    if (!input.volumeMl || !Number.isFinite(input.volumeMl) || input.volumeMl <= 0) {
+      throw new Error('Volume must be a positive number.')
+    }
+    volumeMl = Math.round(input.volumeMl)
+    pourSizeId = null
+  }
+
+  return { pour_size_id: pourSizeId, volume_ml: volumeMl, quantity, amount }
+}
+
 export function createSupabaseSaleService(supabase: SupabaseClient): SaleService {
   return {
     async list(wineId: string): Promise<WineSale[]> {
@@ -45,62 +96,30 @@ export function createSupabaseSaleService(supabase: SupabaseClient): SaleService
       return (data as SaleRow[]).map(fromRow)
     },
 
-    async create(input: {
-      wineId: string
-      soldAt: string
-      pourSizeId?: string | null
-      volumeMl?: number
-      quantity?: number
-      amount?: number | null
-    }): Promise<WineSale> {
-      const quantity = input.quantity ?? 1
-      if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
-        throw new Error('Quantity must be a positive whole number.')
-      }
-
-      const amount = input.amount ?? null
-      if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
-        throw new Error('Amount must be a non-negative number.')
-      }
-
-      let volumeMl: number
-      let pourSizeId: string | null
-
-      if (input.pourSizeId) {
-        const { data: pourSize, error: pourSizeError } = await supabase
-          .from('wine_pour_sizes')
-          .select('id, volume_ml')
-          .eq('id', input.pourSizeId)
-          .maybeSingle()
-        throwIfError(pourSizeError)
-        if (!pourSize) throw new Error('Pour size not found.')
-        volumeMl = (pourSize as { volume_ml: number }).volume_ml
-        pourSizeId = input.pourSizeId
-      } else {
-        if (!input.volumeMl || !Number.isFinite(input.volumeMl) || input.volumeMl <= 0) {
-          throw new Error('Volume must be a positive number.')
-        }
-        volumeMl = Math.round(input.volumeMl)
-        pourSizeId = null
-      }
-
+    async create(input: SaleInput & { wineId: string }): Promise<WineSale> {
+      const resolved = await resolveSaleFields(supabase, input)
       const { data, error } = await supabase
         .from('wine_sales')
-        .insert({
-          wine_id: input.wineId,
-          pour_size_id: pourSizeId,
-          volume_ml: volumeMl,
-          quantity,
-          amount,
-          sold_at: input.soldAt,
-          source: 'manual',
-        })
+        .insert({ wine_id: input.wineId, ...resolved, sold_at: input.soldAt, source: 'manual' })
         .select('*')
         .single()
       if (error) {
         if (error.code === '23503') throw new Error('Wine not found.')
         throw new Error(error.message)
       }
+      return fromRow(data as SaleRow)
+    },
+
+    async update(id: string, input: SaleInput): Promise<WineSale> {
+      const resolved = await resolveSaleFields(supabase, input)
+      const { data, error } = await supabase
+        .from('wine_sales')
+        .update({ ...resolved, sold_at: input.soldAt })
+        .eq('id', id)
+        .select('*')
+        .maybeSingle()
+      throwIfError(error)
+      if (!data) throw new Error('Sale not found.')
       return fromRow(data as SaleRow)
     },
 

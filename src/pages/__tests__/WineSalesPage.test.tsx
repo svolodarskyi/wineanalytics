@@ -99,21 +99,60 @@ describe('WineSalesPage', () => {
     expect(await screen.findByText('$45.50')).toBeInTheDocument()
   })
 
-  it('records a custom-ml sale and can delete it', async () => {
+  it('does not delete when the confirmation is declined', async () => {
+    const wine = await testServicesState.current.wines.create({ name: 'Custom Wine' })
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    renderWithProviders(<WineSalesPage />, { route: `/wines/${wine.id}`, path: '/wines/:wineId' })
+
+    await user.click(await screen.findByRole('button', { name: /record sale/i }))
+    const createModal = screen.getByRole('dialog')
+    fireEvent.change(within(createModal).getByLabelText(/sold at/i), { target: { value: '2026-01-01T12:00' } })
+    await user.type(within(createModal).getByLabelText(/volume \(ml\)/i), '100')
+    await user.click(within(createModal).getByRole('button', { name: /^record sale$/i }))
+
+    const row = (await screen.findAllByText('100ml'))[0].closest('tr') as HTMLElement
+    await user.click(row)
+    const editModal = screen.getByRole('dialog', { name: /edit sale/i })
+    await user.click(within(editModal).getByRole('button', { name: /delete/i }))
+
+    expect(screen.getByRole('dialog', { name: /edit sale/i })).toBeInTheDocument()
+    expect(await testServicesState.current.sales.list(wine.id)).toHaveLength(1)
+  })
+
+  it('records a custom-ml sale, then can edit and delete it by clicking the row', async () => {
     const wine = await testServicesState.current.wines.create({ name: 'Custom Wine' })
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderWithProviders(<WineSalesPage />, { route: `/wines/${wine.id}`, path: '/wines/:wineId' })
 
     await user.click(await screen.findByRole('button', { name: /record sale/i }))
-    const modal = screen.getByRole('dialog')
-    fireEvent.change(within(modal).getByLabelText(/sold at/i), { target: { value: '2026-01-01T12:00' } })
-    expect(within(modal).getByLabelText(/volume entry/i)).toHaveValue('custom')
-    await user.type(within(modal).getByLabelText(/volume \(ml\)/i), '100')
-    await user.click(within(modal).getByRole('button', { name: /^record sale$/i }))
+    const createModal = screen.getByRole('dialog')
+    fireEvent.change(within(createModal).getByLabelText(/sold at/i), { target: { value: '2026-01-01T12:00' } })
+    expect(within(createModal).getByLabelText(/volume entry/i)).toHaveValue('custom')
+    await user.type(within(createModal).getByLabelText(/volume \(ml\)/i), '100')
+    await user.click(within(createModal).getByRole('button', { name: /^record sale$/i }))
 
-    expect(await screen.findAllByText('100ml')).toHaveLength(2)
-    await user.click(screen.getByRole('button', { name: /delete/i }))
+    const cells = await screen.findAllByText('100ml')
+    expect(cells).toHaveLength(2)
+    const row = cells[0].closest('tr') as HTMLElement
+
+    // Clicking the row opens an edit modal, pre-filled with the sale's current values.
+    await user.click(row)
+    const editModal = screen.getByRole('dialog', { name: /edit sale/i })
+    expect(within(editModal).getByLabelText(/volume \(ml\)/i)).toHaveValue(100)
+    await user.clear(within(editModal).getByLabelText(/volume \(ml\)/i))
+    await user.type(within(editModal).getByLabelText(/volume \(ml\)/i), '200')
+    await user.click(within(editModal).getByRole('button', { name: /^save$/i }))
+
+    expect(await screen.findAllByText('200ml')).toHaveLength(2)
+
+    // Re-open and delete from within the modal.
+    const updatedRow = (await screen.findAllByText('200ml'))[0].closest('tr') as HTMLElement
+    await user.click(updatedRow)
+    const secondEditModal = screen.getByRole('dialog', { name: /edit sale/i })
+    await user.click(within(secondEditModal).getByRole('button', { name: /delete/i }))
+
     expect(await screen.findByText(/no sales recorded yet/i)).toBeInTheDocument()
   })
 })

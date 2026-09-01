@@ -34,6 +34,24 @@ export function useCreateSale(wineId: string) {
   })
 }
 
+export function useUpdateSale(wineId: string) {
+  const invalidate = useInvalidateAfterSale(wineId)
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...input
+    }: {
+      id: string
+      soldAt: string
+      pourSizeId?: string | null
+      volumeMl?: number
+      quantity?: number
+      amount?: number | null
+    }) => services.sales.update(id, input),
+    onSuccess: invalidate,
+  })
+}
+
 export function useDeleteSale(wineId: string) {
   const invalidate = useInvalidateAfterSale(wineId)
   return useMutation({

@@ -144,6 +144,11 @@ export interface SaleService {
     /** Total dollar amount for this entry (not per-unit). Optional - null when not tracked. */
     amount?: number | null
   }): Promise<WineSale>
+  /** Corrects a manually-entered sale after the fact. Same shape/semantics as create - the wine a sale belongs to can't be changed, only re-entered (delete + create). */
+  update(
+    id: string,
+    input: { soldAt: string; pourSizeId?: string | null; volumeMl?: number; quantity?: number; amount?: number | null },
+  ): Promise<WineSale>
   delete(id: string): Promise<void>
 }
 

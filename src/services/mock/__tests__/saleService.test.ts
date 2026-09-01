@@ -104,6 +104,57 @@ describe('mock sale service', () => {
     expect(sales.map((s) => s.soldAt)).toEqual(['2026-03-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z'])
   })
 
+  describe('update', () => {
+    it('corrects the volume, quantity, amount, and date of an existing sale', async () => {
+      const wine = await services.wines.create({ name: 'Wine' })
+      const sale = await services.sales.create({ wineId: wine.id, soldAt: '2026-01-01T00:00:00.000Z', volumeMl: 100 })
+
+      const updated = await services.sales.update(sale.id, {
+        soldAt: '2026-02-02T10:00:00.000Z',
+        volumeMl: 750,
+        quantity: 2,
+        amount: 90,
+      })
+
+      expect(updated.id).toBe(sale.id)
+      expect(updated.volumeMl).toBe(750)
+      expect(updated.quantity).toBe(2)
+      expect(updated.amount).toBe(90)
+      expect(updated.soldAt).toBe('2026-02-02T10:00:00.000Z')
+    })
+
+    it('can switch from a custom volume to a pour size', async () => {
+      const wine = await services.wines.create({ name: 'Wine' })
+      const pourSize = await services.pourSizes.create({ name: 'Glass', volumeMl: 150 })
+      const sale = await services.sales.create({ wineId: wine.id, soldAt: '2026-01-01T00:00:00.000Z', volumeMl: 100 })
+
+      const updated = await services.sales.update(sale.id, { soldAt: sale.soldAt, pourSizeId: pourSize.id })
+      expect(updated.pourSizeId).toBe(pourSize.id)
+      expect(updated.volumeMl).toBe(150)
+    })
+
+    it('rejects an unknown sale id', async () => {
+      await expect(
+        services.sales.update('missing-sale', { soldAt: '2026-01-01T00:00:00.000Z', volumeMl: 100 }),
+      ).rejects.toThrow(/sale not found/i)
+    })
+
+    it('rejects invalid quantity/amount/volume the same way create does', async () => {
+      const wine = await services.wines.create({ name: 'Wine' })
+      const sale = await services.sales.create({ wineId: wine.id, soldAt: '2026-01-01T00:00:00.000Z', volumeMl: 100 })
+
+      await expect(
+        services.sales.update(sale.id, { soldAt: sale.soldAt, volumeMl: 100, quantity: 0 }),
+      ).rejects.toThrow(/positive whole number/i)
+      await expect(
+        services.sales.update(sale.id, { soldAt: sale.soldAt, volumeMl: 100, amount: -1 }),
+      ).rejects.toThrow(/non-negative/i)
+      await expect(services.sales.update(sale.id, { soldAt: sale.soldAt, volumeMl: 0 })).rejects.toThrow(
+        /positive number/i,
+      )
+    })
+  })
+
   it('deletes a sale', async () => {
     const wine = await services.wines.create({ name: 'Wine' })
     const sale = await services.sales.create({ wineId: wine.id, soldAt: '2026-01-01T00:00:00.000Z', volumeMl: 100 })

@@ -352,6 +352,14 @@ export class MockStore {
     this.sales = [sale, ...this.sales]
   }
 
+  updateSale(id: string, updater: (sale: WineSale) => WineSale): WineSale {
+    const index = this.sales.findIndex((sale) => sale.id === id)
+    if (index === -1) throw new Error('Sale not found.')
+    const updated = updater(this.sales[index])
+    this.sales = this.sales.map((sale, i) => (i === index ? updated : sale))
+    return updated
+  }
+
   deleteSale(id: string): void {
     this.sales = this.sales.filter((sale) => sale.id !== id)
   }

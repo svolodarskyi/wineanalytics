@@ -135,6 +135,55 @@ describe('supabase sale service', () => {
     )
   })
 
+  describe('update', () => {
+    it('updates the row and maps the result back', async () => {
+      const updateBuilder = fakeQueryBuilder({ data: { ...SALE_ROW, volume_ml: 750, quantity: 2, amount: 90 } })
+      const from = vi.fn(() => updateBuilder)
+      const sales = createSupabaseSaleService(supabaseWith(from))
+
+      const updated = await sales.update('s1', { soldAt: SALE_ROW.sold_at, volumeMl: 750, quantity: 2, amount: 90 })
+      expect(updated.volumeMl).toBe(750)
+      expect(updated.quantity).toBe(2)
+      expect(updated.amount).toBe(90)
+      expect(updateBuilder.update).toHaveBeenCalledWith(
+        expect.objectContaining({ volume_ml: 750, quantity: 2, amount: 90, sold_at: SALE_ROW.sold_at }),
+      )
+      expect(updateBuilder.eq).toHaveBeenCalledWith('id', 's1')
+    })
+
+    it('resolves a pour size the same way create does', async () => {
+      const pourSizeLookup = fakeQueryBuilder({ data: { id: 'p1', volume_ml: 150 } })
+      const updateBuilder = fakeQueryBuilder({ data: { ...SALE_ROW, pour_size_id: 'p1', volume_ml: 150 } })
+      const from = vi.fn().mockReturnValueOnce(pourSizeLookup).mockReturnValueOnce(updateBuilder)
+      const sales = createSupabaseSaleService(supabaseWith(from))
+
+      const updated = await sales.update('s1', { soldAt: SALE_ROW.sold_at, pourSizeId: 'p1' })
+      expect(updated.volumeMl).toBe(150)
+      expect(updateBuilder.update).toHaveBeenCalledWith(expect.objectContaining({ pour_size_id: 'p1', volume_ml: 150 }))
+    })
+
+    it('rejects an unknown sale id', async () => {
+      const updateBuilder = fakeQueryBuilder({ data: null })
+      const from = vi.fn(() => updateBuilder)
+      const sales = createSupabaseSaleService(supabaseWith(from))
+      await expect(sales.update('missing', { soldAt: SALE_ROW.sold_at, volumeMl: 750 })).rejects.toThrow(
+        /sale not found/i,
+      )
+    })
+
+    it('rejects invalid quantity/amount without hitting the database', async () => {
+      const from = vi.fn()
+      const sales = createSupabaseSaleService(supabaseWith(from))
+      await expect(sales.update('s1', { soldAt: SALE_ROW.sold_at, volumeMl: 750, quantity: 0 })).rejects.toThrow(
+        /positive whole number/i,
+      )
+      await expect(sales.update('s1', { soldAt: SALE_ROW.sold_at, volumeMl: 750, amount: -1 })).rejects.toThrow(
+        /non-negative/i,
+      )
+      expect(from).not.toHaveBeenCalled()
+    })
+  })
+
   it('deletes a sale by id', async () => {
     const deleteBuilder = fakeQueryBuilder({})
     const from = vi.fn(() => deleteBuilder)

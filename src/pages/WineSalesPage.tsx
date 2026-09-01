@@ -2,9 +2,9 @@ import { useState, type SubmitEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { Modal } from '../components/Modal'
 import { usePourSizes } from '../hooks/usePourSizes'
-import { useCreateSale, useDeleteSale, useSales } from '../hooks/useSales'
+import { useCreateSale, useDeleteSale, useSales, useUpdateSale } from '../hooks/useSales'
 import { useWine } from '../hooks/useWines'
-import type { WineSale } from '../types'
+import type { Wine, WineSale } from '../types'
 import { formatCurrency, formatDateTime, formatVolumeMl } from '../utils/format'
 
 type EntryMode = 'pour-size' | 'full-bottle' | 'custom'
@@ -20,6 +20,12 @@ function saleTypeLabel(sale: WineSale, pourSizeNameById: Map<string, string>, wi
   return 'Custom'
 }
 
+function entryModeForSale(sale: WineSale, wine: Wine | null | undefined): EntryMode {
+  if (sale.pourSizeId) return 'pour-size'
+  if (wine?.volumeMl && sale.volumeMl === wine.volumeMl) return 'full-bottle'
+  return 'custom'
+}
+
 export function WineSalesPage() {
   const { wineId } = useParams<{ wineId: string }>()
   const { data: wine } = useWine(wineId)
@@ -27,9 +33,11 @@ export function WineSalesPage() {
   const { data: pourSizes } = usePourSizes({ includeInactive: true })
 
   const createSale = useCreateSale(wineId ?? '')
+  const updateSale = useUpdateSale(wineId ?? '')
   const deleteSale = useDeleteSale(wineId ?? '')
 
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingSaleId, setEditingSaleId] = useState<string | null>(null)
   const [entryMode, setEntryMode] = useState<EntryMode>('pour-size')
   const [soldAt, setSoldAt] = useState('')
   const [pourSizeId, setPourSizeId] = useState('')
@@ -38,18 +46,32 @@ export function WineSalesPage() {
   const [amount, setAmount] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const activePourSizes = (pourSizes ?? []).filter((p) => p.active)
   const pourSizeNameById = new Map((pourSizes ?? []).map((p) => [p.id, p.name]))
 
-  function openModal() {
+  function openCreateModal() {
+    setEditingSaleId(null)
     setSoldAt(toDateTimeLocalValue(new Date()))
     setEntryMode(activePourSizes.length ? 'pour-size' : wine?.volumeMl ? 'full-bottle' : 'custom')
     setPourSizeId(activePourSizes[0]?.id ?? '')
     setCustomVolume('')
     setQuantity('1')
     setAmount('')
+    setFormError(null)
+    setIsModalOpen(true)
+  }
+
+  function openEditModal(sale: WineSale) {
+    const mode = entryModeForSale(sale, wine)
+    setEditingSaleId(sale.id)
+    setSoldAt(toDateTimeLocalValue(new Date(sale.soldAt)))
+    setEntryMode(mode)
+    setPourSizeId(mode === 'pour-size' ? (sale.pourSizeId ?? '') : (activePourSizes[0]?.id ?? ''))
+    setCustomVolume(mode === 'custom' ? String(sale.volumeMl) : '')
+    setQuantity(String(sale.quantity))
+    setAmount(sale.amount != null ? String(sale.amount) : '')
     setFormError(null)
     setIsModalOpen(true)
   }
@@ -80,48 +102,53 @@ export function WineSalesPage() {
       }
     }
 
+    let volumeFields: { pourSizeId: string } | { volumeMl: number }
+    if (entryMode === 'pour-size') {
+      if (!pourSizeId) {
+        setFormError('Choose a pour size.')
+        return
+      }
+      volumeFields = { pourSizeId }
+    } else if (entryMode === 'full-bottle') {
+      if (!wine?.volumeMl) {
+        setFormError('This wine has no bottle volume set.')
+        return
+      }
+      volumeFields = { volumeMl: wine.volumeMl }
+    } else {
+      const volumeMl = Number(customVolume)
+      if (!customVolume || !Number.isFinite(volumeMl) || volumeMl <= 0) {
+        setFormError('Enter a positive volume in ml.')
+        return
+      }
+      volumeFields = { volumeMl }
+    }
+
     setIsSaving(true)
     try {
-      if (entryMode === 'pour-size') {
-        if (!pourSizeId) {
-          setFormError('Choose a pour size.')
-          return
-        }
-        await createSale.mutateAsync({ soldAt: soldAtIso, pourSizeId, quantity: quantityNumber, amount: amountNumber })
-      } else if (entryMode === 'full-bottle') {
-        if (!wine?.volumeMl) {
-          setFormError('This wine has no bottle volume set.')
-          return
-        }
-        await createSale.mutateAsync({
-          soldAt: soldAtIso,
-          volumeMl: wine.volumeMl,
-          quantity: quantityNumber,
-          amount: amountNumber,
-        })
+      const saleInput = { soldAt: soldAtIso, ...volumeFields, quantity: quantityNumber, amount: amountNumber }
+      if (editingSaleId) {
+        await updateSale.mutateAsync({ id: editingSaleId, ...saleInput })
       } else {
-        const volumeMl = Number(customVolume)
-        if (!customVolume || !Number.isFinite(volumeMl) || volumeMl <= 0) {
-          setFormError('Enter a positive volume in ml.')
-          return
-        }
-        await createSale.mutateAsync({ soldAt: soldAtIso, volumeMl, quantity: quantityNumber, amount: amountNumber })
+        await createSale.mutateAsync(saleInput)
       }
       setIsModalOpen(false)
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not record the sale.')
+      setFormError(err instanceof Error ? err.message : 'Could not save the sale.')
     } finally {
       setIsSaving(false)
     }
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete() {
+    if (!editingSaleId) return
     if (!window.confirm('Delete this sale? This cannot be undone.')) return
-    setDeletingId(id)
+    setIsDeleting(true)
     try {
-      await deleteSale.mutateAsync(id)
+      await deleteSale.mutateAsync(editingSaleId)
+      setIsModalOpen(false)
     } finally {
-      setDeletingId(null)
+      setIsDeleting(false)
     }
   }
 
@@ -129,7 +156,7 @@ export function WineSalesPage() {
     <div className="card">
       <div className="page-header">
         <h2>Sales</h2>
-        <button type="button" className="btn btn--small btn--primary" onClick={openModal}>
+        <button type="button" className="btn btn--small btn--primary" onClick={openCreateModal}>
           + Record sale
         </button>
       </div>
@@ -137,45 +164,39 @@ export function WineSalesPage() {
       {isLoading && <p className="spinner-text">Loading...</p>}
       {!isLoading && sales?.length === 0 && <p className="empty-state">No sales recorded yet for this wine.</p>}
       {!!sales?.length && (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Sold At</th>
-              <th>Type</th>
-              <th className="numeric">Volume</th>
-              <th className="numeric">Quantity</th>
-              <th className="numeric">Total</th>
-              <th className="numeric">Amount</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {sales.map((sale) => (
-              <tr key={sale.id}>
-                <td>{formatDateTime(sale.soldAt)}</td>
-                <td>{saleTypeLabel(sale, pourSizeNameById, wine?.volumeMl ?? null)}</td>
-                <td className="numeric">{formatVolumeMl(sale.volumeMl)}</td>
-                <td className="numeric">{sale.quantity}</td>
-                <td className="numeric">{formatVolumeMl(sale.volumeMl * sale.quantity)}</td>
-                <td className="numeric">{formatCurrency(sale.amount)}</td>
-                <td>
-                  <button
-                    type="button"
-                    className="btn btn--small btn--danger"
-                    disabled={deletingId === sale.id}
-                    onClick={() => handleDelete(sale.id)}
-                  >
-                    {deletingId === sale.id ? 'Deleting...' : 'Delete'}
-                  </button>
-                </td>
+        <>
+          <p className="page-header__meta" style={{ marginBottom: 8 }}>
+            Click a sale to edit or delete it.
+          </p>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Sold At</th>
+                <th>Type</th>
+                <th className="numeric">Volume</th>
+                <th className="numeric">Quantity</th>
+                <th className="numeric">Total</th>
+                <th className="numeric">Amount</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sales.map((sale) => (
+                <tr key={sale.id} className="data-table__row--clickable" onClick={() => openEditModal(sale)}>
+                  <td>{formatDateTime(sale.soldAt)}</td>
+                  <td>{saleTypeLabel(sale, pourSizeNameById, wine?.volumeMl ?? null)}</td>
+                  <td className="numeric">{formatVolumeMl(sale.volumeMl)}</td>
+                  <td className="numeric">{sale.quantity}</td>
+                  <td className="numeric">{formatVolumeMl(sale.volumeMl * sale.quantity)}</td>
+                  <td className="numeric">{formatCurrency(sale.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
 
       {isModalOpen && (
-        <Modal title="Record sale" onClose={() => setIsModalOpen(false)}>
+        <Modal title={editingSaleId ? 'Edit sale' : 'Record sale'} onClose={() => setIsModalOpen(false)}>
           <form className="stack" onSubmit={handleSubmit}>
             <div className="field">
               <label htmlFor="sale-sold-at">Sold at</label>
@@ -262,13 +283,20 @@ export function WineSalesPage() {
 
             {formError && <p className="notice notice--error">{formError}</p>}
 
-            <div className="picker" style={{ justifyContent: 'flex-end' }}>
-              <button type="button" className="btn" onClick={() => setIsModalOpen(false)}>
-                Cancel
-              </button>
-              <button type="submit" className="btn btn--primary" disabled={isSaving}>
-                {isSaving ? 'Recording...' : 'Record sale'}
-              </button>
+            <div className="picker" style={{ justifyContent: editingSaleId ? 'space-between' : 'flex-end' }}>
+              {editingSaleId && (
+                <button type="button" className="btn btn--small btn--danger" disabled={isDeleting} onClick={handleDelete}>
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              )}
+              <div className="picker">
+                <button type="button" className="btn" onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn--primary" disabled={isSaving}>
+                  {editingSaleId ? (isSaving ? 'Saving...' : 'Save') : isSaving ? 'Recording...' : 'Record sale'}
+                </button>
+              </div>
             </div>
           </form>
         </Modal>
