@@ -18,6 +18,7 @@ export function createMockAlertService(store: MockStore, latencyMs: number): Ale
       await delay(latencyMs)
       const alerts: InventoryAlert[] = []
       for (const threshold of store.alertThresholds) {
+        if (!threshold.active) continue
         const wine = store.findWine(threshold.wineId)
         if (!wine || !wine.active) continue
         const balanceInBottles = store.balanceInBottles(wine.id)
@@ -54,6 +55,11 @@ export function createMockAlertService(store: MockStore, latencyMs: number): Ale
         throw new Error('Alert level must be a non-negative number.')
       }
       return store.upsertThreshold(wineId, Math.round(minBottles))
+    },
+
+    async setThresholdActive(wineId: string, active: boolean): Promise<WineAlertThreshold> {
+      await delay(latencyMs)
+      return store.setThresholdActive(wineId, active)
     },
 
     async deleteThreshold(wineId: string): Promise<void> {

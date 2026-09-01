@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type SubmitEvent } from 'react'
 import type { WineCategory } from '../types'
 import { readFileAsDataUrl } from '../utils/readFileAsDataUrl'
+import { ActiveStatusDot } from './ActiveStatusDot'
 import { Modal } from './Modal'
 
 const WINE_CATEGORY_OPTIONS: { value: WineCategory; label: string }[] = [
@@ -479,19 +480,16 @@ export function EntityManager({
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className="data-table__row--clickable" onClick={() => openDetail(item)}>
                   <td>
-                    <span className="row-link">{item.name}</span>
-                  </td>
-                  <td>
-                    <span className={`badge ${item.active ? 'badge--confirmed' : 'badge--neutral'}`}>
-                      {item.active ? 'Active' : 'Inactive'}
-                    </span>
+                    <div className="name-row">
+                      <ActiveStatusDot active={item.active} />
+                      <span className="row-link">{item.name}</span>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -1,8 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ActiveStatusDot } from '../components/ActiveStatusDot'
 import { EntityPicker } from '../components/EntityPicker'
 import { Modal } from '../components/Modal'
-import { useAlertThresholds, useDeleteAlertThreshold, useInventoryAlerts, useSetAlertThreshold } from '../hooks/useAlerts'
+import {
+  useAlertThresholds,
+  useDeleteAlertThreshold,
+  useInventoryAlerts,
+  useSetAlertThreshold,
+  useSetThresholdActive,
+} from '../hooks/useAlerts'
 import { useWines } from '../hooks/useWines'
 import type { Wine } from '../types'
 import { formatBottles } from '../utils/format'
@@ -15,12 +22,14 @@ export function AlertsInventoryPage() {
   const { data: wines } = useWines()
 
   const setThreshold = useSetAlertThreshold()
+  const setThresholdActive = useSetThresholdActive()
   const deleteThreshold = useDeleteAlertThreshold()
 
   const [modalState, setModalState] = useState<ThresholdModalState>(null)
   const [modalError, setModalError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isRemoving, setIsRemoving] = useState(false)
+  const [isTogglingActive, setIsTogglingActive] = useState(false)
 
   const winesById = new Map((wines ?? []).map((wine) => [wine.id, wine]))
   const existingThreshold = modalState?.wine ? (thresholds ?? []).find((t) => t.wineId === modalState.wine!.id) : undefined
@@ -60,6 +69,19 @@ export function AlertsInventoryPage() {
       setModalError(err instanceof Error ? err.message : 'Could not save the alert level.')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function handleToggleActive() {
+    if (!modalState || !modalState.wine || !existingThreshold) return
+    setModalError(null)
+    setIsTogglingActive(true)
+    try {
+      await setThresholdActive.mutateAsync({ wineId: modalState.wine.id, active: !existingThreshold.active })
+    } catch (err) {
+      setModalError(err instanceof Error ? err.message : 'Could not update the alert level.')
+    } finally {
+      setIsTogglingActive(false)
     }
   }
 
@@ -147,7 +169,10 @@ export function AlertsInventoryPage() {
                     onClick={() => openEditModal(threshold.wineId, threshold.minBottles)}
                   >
                     <td>
-                      <span className="row-link">{wine?.name ?? 'Unknown wine'}</span>
+                      <div className="name-row">
+                        <ActiveStatusDot active={threshold.active} />
+                        <span className="row-link">{wine?.name ?? 'Unknown wine'}</span>
+                      </div>
                     </td>
                     <td className="numeric">{threshold.minBottles}</td>
                   </tr>
@@ -188,6 +213,16 @@ export function AlertsInventoryPage() {
                   autoFocus
                 />
               </div>
+              {existingThreshold && (
+                <div className="match-row">
+                  <span className={`badge ${existingThreshold.active ? 'badge--confirmed' : 'badge--neutral'}`}>
+                    {existingThreshold.active ? 'Active' : 'Inactive'}
+                  </span>
+                  <button type="button" className="btn btn--small" disabled={isTogglingActive} onClick={handleToggleActive}>
+                    {isTogglingActive ? 'Updating...' : existingThreshold.active ? 'Deactivate' : 'Activate'}
+                  </button>
+                </div>
+              )}
               {modalError && <p className="notice notice--error">{modalError}</p>}
               <div className="picker" style={{ justifyContent: existingThreshold ? 'space-between' : 'flex-end' }}>
                 {existingThreshold && (

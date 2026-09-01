@@ -16,6 +16,7 @@ interface ThresholdRow {
   id: string
   wine_id: string
   min_bottles: number
+  active: boolean
   created_at: string
 }
 
@@ -35,7 +36,7 @@ function throwIfError(error: { message: string } | null): void {
 }
 
 function toThreshold(row: ThresholdRow): WineAlertThreshold {
-  return { id: row.id, wineId: row.wine_id, minBottles: row.min_bottles, createdAt: row.created_at }
+  return { id: row.id, wineId: row.wine_id, minBottles: row.min_bottles, active: row.active, createdAt: row.created_at }
 }
 
 /**
@@ -117,6 +118,7 @@ export function createSupabaseAlertService(supabase: SupabaseClient): AlertServi
 
       const alerts: InventoryAlert[] = []
       for (const row of rows) {
+        if (!row.active) continue
         if (!row.wine_wines || !row.wine_wines.active) continue
         const balanceInBottles = balanceByWineId.get(row.wine_id) ?? 0
         if (balanceInBottles < row.min_bottles) {
@@ -157,13 +159,25 @@ export function createSupabaseAlertService(supabase: SupabaseClient): AlertServi
       }
       const { data, error } = await supabase
         .from('wine_alert_thresholds')
-        .upsert({ wine_id: wineId, min_bottles: Math.round(minBottles) }, { onConflict: 'wine_id' })
+        .upsert({ wine_id: wineId, min_bottles: Math.round(minBottles), active: true }, { onConflict: 'wine_id' })
         .select('*')
         .single()
       if (error) {
         if (error.code === '23503') throw new Error('Wine not found.')
         throw new Error(error.message)
       }
+      return toThreshold(data as ThresholdRow)
+    },
+
+    async setThresholdActive(wineId: string, active: boolean): Promise<WineAlertThreshold> {
+      const { data, error } = await supabase
+        .from('wine_alert_thresholds')
+        .update({ active })
+        .eq('wine_id', wineId)
+        .select('*')
+        .maybeSingle()
+      throwIfError(error)
+      if (!data) throw new Error('Alert level not found.')
       return toThreshold(data as ThresholdRow)
     },
 

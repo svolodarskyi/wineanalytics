@@ -106,6 +106,43 @@ describe('mock alert service', () => {
       await expect(alerts.setThreshold(wine.id, -1)).rejects.toThrow(/non-negative/i)
     })
 
+    it('setThresholdActive pauses a threshold without changing its level, and reactivating restores the alert', async () => {
+      const store = new MockStore({ seed: false })
+      const wine = { id: createId('wine'), name: 'Wine', invoiceName: null, country: null, volumeMl: null, category: null, imageDataUrl: null, active: true, createdAt: new Date().toISOString() }
+      store.wines.push(wine)
+      const alerts = createMockAlertService(store, 0)
+      pushApprovedInvoice(store, wine.id, 2)
+      await alerts.setThreshold(wine.id, 5)
+
+      const deactivated = await alerts.setThresholdActive(wine.id, false)
+      expect(deactivated.active).toBe(false)
+      expect(deactivated.minBottles).toBe(5)
+      expect(await alerts.listInventoryAlerts()).toEqual([])
+
+      const reactivated = await alerts.setThresholdActive(wine.id, true)
+      expect(reactivated.active).toBe(true)
+      expect(await alerts.listInventoryAlerts()).toEqual([{ wine, balanceInBottles: 2, minBottles: 5 }])
+    })
+
+    it('setThreshold reactivates a previously deactivated threshold', async () => {
+      const store = new MockStore({ seed: false })
+      const wine = { id: createId('wine'), name: 'Wine', invoiceName: null, country: null, volumeMl: null, category: null, imageDataUrl: null, active: true, createdAt: new Date().toISOString() }
+      store.wines.push(wine)
+      const alerts = createMockAlertService(store, 0)
+      await alerts.setThreshold(wine.id, 5)
+      await alerts.setThresholdActive(wine.id, false)
+
+      const updated = await alerts.setThreshold(wine.id, 8)
+      expect(updated.active).toBe(true)
+      expect(updated.minBottles).toBe(8)
+    })
+
+    it('setThresholdActive rejects an unknown wine', async () => {
+      const store = new MockStore({ seed: false })
+      const alerts = createMockAlertService(store, 0)
+      await expect(alerts.setThresholdActive('missing-wine', false)).rejects.toThrow(/not found/i)
+    })
+
     it('deleteThreshold removes it, so the wine no longer appears even if understocked', async () => {
       const store = new MockStore({ seed: false })
       const wine = { id: createId('wine'), name: 'Wine', invoiceName: null, country: null, volumeMl: null, category: null, imageDataUrl: null, active: true, createdAt: new Date().toISOString() }

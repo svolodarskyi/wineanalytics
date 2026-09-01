@@ -52,6 +52,15 @@ export function useSetAlertThreshold() {
   })
 }
 
+export function useSetThresholdActive() {
+  const invalidate = useInvalidateAlerts()
+  return useMutation({
+    mutationFn: ({ wineId, active }: { wineId: string; active: boolean }) =>
+      services.alerts.setThresholdActive(wineId, active),
+    onSuccess: invalidate,
+  })
+}
+
 export function useDeleteAlertThreshold() {
   const invalidate = useInvalidateAlerts()
   return useMutation({

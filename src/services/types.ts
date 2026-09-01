@@ -108,8 +108,10 @@ export interface AlertService {
   /** One entry per (wine, missing field) - see src/utils/dataQuality.ts for the tracked-fields list. */
   listDataQualityAlerts(): Promise<DataQualityAlert[]>
   listThresholds(): Promise<WineAlertThreshold[]>
-  /** Creates or updates the one threshold a wine can have. */
+  /** Creates or updates the one threshold a wine can have, reactivating it if it was deactivated. */
   setThreshold(wineId: string, minBottles: number): Promise<WineAlertThreshold>
+  /** Pauses or resumes an existing threshold without losing its configured level - inactive thresholds are excluded from listInventoryAlerts(). */
+  setThresholdActive(wineId: string, active: boolean): Promise<WineAlertThreshold>
   deleteThreshold(wineId: string): Promise<void>
   /** Sales whose volume falls outside the single global min/max configured via setSalesAlertThreshold. */
   listSalesQualityAlerts(): Promise<SalesQualityAlert[]>

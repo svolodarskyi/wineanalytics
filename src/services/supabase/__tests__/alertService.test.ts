@@ -23,7 +23,7 @@ describe('supabase alert service', () => {
     it('flags a wine whose balance is below its threshold, mapping the joined row', async () => {
       const from = routedSupabaseFrom({
         wine_alert_thresholds: [
-          { data: [{ id: 't1', wine_id: 'w1', min_bottles: 5, created_at: '2026-01-01T00:00:00.000Z', wine_wines: WINE_ROW }] },
+          { data: [{ id: 't1', wine_id: 'w1', min_bottles: 5, active: true, created_at: '2026-01-01T00:00:00.000Z', wine_wines: WINE_ROW }] },
         ],
         wine_invoice_line_items: [{ data: [{ wine_id: 'w1', quantity: 2 }] }],
         wine_sales: [{ data: [] }],
@@ -43,7 +43,7 @@ describe('supabase alert service', () => {
     it('excludes wines that meet their threshold', async () => {
       const from = routedSupabaseFrom({
         wine_alert_thresholds: [
-          { data: [{ id: 't1', wine_id: 'w1', min_bottles: 5, created_at: '2026-01-01T00:00:00.000Z', wine_wines: WINE_ROW }] },
+          { data: [{ id: 't1', wine_id: 'w1', min_bottles: 5, active: true, created_at: '2026-01-01T00:00:00.000Z', wine_wines: WINE_ROW }] },
         ],
         wine_invoice_line_items: [{ data: [{ wine_id: 'w1', quantity: 10 }] }],
         wine_sales: [{ data: [] }],
@@ -57,11 +57,27 @@ describe('supabase alert service', () => {
         wine_alert_thresholds: [
           {
             data: [
-              { id: 't1', wine_id: 'w1', min_bottles: 5, created_at: '2026-01-01T00:00:00.000Z', wine_wines: { ...WINE_ROW, active: false } },
+              { id: 't1', wine_id: 'w1', min_bottles: 5, active: true, created_at: '2026-01-01T00:00:00.000Z', wine_wines: { ...WINE_ROW, active: false } },
             ],
           },
         ],
         wine_invoice_line_items: [{ data: [] }],
+        wine_sales: [{ data: [] }],
+      })
+      const alerts = createSupabaseAlertService(supabaseWith(from))
+      expect(await alerts.listInventoryAlerts()).toEqual([])
+    })
+
+    it('excludes a deactivated threshold even when the wine is understocked', async () => {
+      const from = routedSupabaseFrom({
+        wine_alert_thresholds: [
+          {
+            data: [
+              { id: 't1', wine_id: 'w1', min_bottles: 5, active: false, created_at: '2026-01-01T00:00:00.000Z', wine_wines: WINE_ROW },
+            ],
+          },
+        ],
+        wine_invoice_line_items: [{ data: [{ wine_id: 'w1', quantity: 2 }] }],
         wine_sales: [{ data: [] }],
       })
       const alerts = createSupabaseAlertService(supabaseWith(from))
@@ -93,10 +109,14 @@ describe('supabase alert service', () => {
   describe('thresholds CRUD', () => {
     it('listThresholds maps rows to the app shape', async () => {
       const from = routedSupabaseFrom({
-        wine_alert_thresholds: [{ data: [{ id: 't1', wine_id: 'w1', min_bottles: 5, created_at: '2026-01-01T00:00:00.000Z' }] }],
+        wine_alert_thresholds: [
+          { data: [{ id: 't1', wine_id: 'w1', min_bottles: 5, active: true, created_at: '2026-01-01T00:00:00.000Z' }] },
+        ],
       })
       const alerts = createSupabaseAlertService(supabaseWith(from))
-      expect(await alerts.listThresholds()).toEqual([{ id: 't1', wineId: 'w1', minBottles: 5, createdAt: '2026-01-01T00:00:00.000Z' }])
+      expect(await alerts.listThresholds()).toEqual([
+        { id: 't1', wineId: 'w1', minBottles: 5, active: true, createdAt: '2026-01-01T00:00:00.000Z' },
+      ])
     })
 
     it('setThreshold rejects a negative level without hitting the database', async () => {
@@ -116,13 +136,38 @@ describe('supabase alert service', () => {
 
     it('setThreshold succeeds and maps the upserted row', async () => {
       const from = routedSupabaseFrom({
-        wine_alert_thresholds: [{ data: { id: 't1', wine_id: 'w1', min_bottles: 5, created_at: '2026-01-01T00:00:00.000Z' } }],
+        wine_alert_thresholds: [
+          { data: { id: 't1', wine_id: 'w1', min_bottles: 5, active: true, created_at: '2026-01-01T00:00:00.000Z' } },
+        ],
       })
       const alerts = createSupabaseAlertService(supabaseWith(from))
       const result = await alerts.setThreshold('w1', 5)
-      expect(result).toEqual({ id: 't1', wineId: 'w1', minBottles: 5, createdAt: '2026-01-01T00:00:00.000Z' })
+      expect(result).toEqual({ id: 't1', wineId: 'w1', minBottles: 5, active: true, createdAt: '2026-01-01T00:00:00.000Z' })
       const builder = from.mock.results[0].value
-      expect(builder.upsert).toHaveBeenCalledWith({ wine_id: 'w1', min_bottles: 5 }, { onConflict: 'wine_id' })
+      expect(builder.upsert).toHaveBeenCalledWith(
+        { wine_id: 'w1', min_bottles: 5, active: true },
+        { onConflict: 'wine_id' },
+      )
+    })
+
+    it('setThresholdActive pauses an existing threshold without changing its level', async () => {
+      const from = routedSupabaseFrom({
+        wine_alert_thresholds: [
+          { data: { id: 't1', wine_id: 'w1', min_bottles: 5, active: false, created_at: '2026-01-01T00:00:00.000Z' } },
+        ],
+      })
+      const alerts = createSupabaseAlertService(supabaseWith(from))
+      const result = await alerts.setThresholdActive('w1', false)
+      expect(result).toEqual({ id: 't1', wineId: 'w1', minBottles: 5, active: false, createdAt: '2026-01-01T00:00:00.000Z' })
+      const builder = from.mock.results[0].value
+      expect(builder.update).toHaveBeenCalledWith({ active: false })
+      expect(builder.eq).toHaveBeenCalledWith('wine_id', 'w1')
+    })
+
+    it('setThresholdActive rejects an unknown wine', async () => {
+      const from = routedSupabaseFrom({ wine_alert_thresholds: [{ data: null }] })
+      const alerts = createSupabaseAlertService(supabaseWith(from))
+      await expect(alerts.setThresholdActive('missing-wine', false)).rejects.toThrow(/not found/i)
     })
 
     it('deleteThreshold deletes by wine_id', async () => {

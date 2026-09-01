@@ -47,7 +47,7 @@ describe('SettingsWinesPage', () => {
 
     await user.click(screen.getByLabelText(/show inactive/i))
     const reappeared = await screen.findByText('Test Wine Renamed')
-    expect(reappeared.closest('tr')).toHaveTextContent('Inactive')
+    expect(within(reappeared.closest('tr') as HTMLElement).getByLabelText('Deactivated')).toBeInTheDocument()
   })
 
   it('deletes a wine that has never been used, from the detail popup', async () => {

@@ -232,7 +232,7 @@ export function seedInvoicesAndSales(
 
   // Give the oversold wine a visible alert level so Alerts > Inventory has something to show immediately.
   const alertThresholds: WineAlertThreshold[] = oversoldWineId
-    ? [{ id: createId('threshold'), wineId: oversoldWineId, minBottles: 6, createdAt: new Date().toISOString() }]
+    ? [{ id: createId('threshold'), wineId: oversoldWineId, minBottles: 6, active: true, createdAt: new Date().toISOString() }]
     : []
 
   return { invoices, sales, alertThresholds }

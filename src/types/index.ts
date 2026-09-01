@@ -102,11 +102,12 @@ export interface AuthUser {
   email: string
 }
 
-/** A configured "alert me when this wine's balance falls below N bottles" rule. One per wine at most. */
+/** A configured "alert me when this wine's balance falls below N bottles" rule. One per wine at most. Deactivating pauses it without losing the configured level - use delete to remove it entirely. */
 export interface WineAlertThreshold {
   id: string
   wineId: string
   minBottles: number
+  active: boolean
   createdAt: string
 }
 

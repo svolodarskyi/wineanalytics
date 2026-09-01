@@ -1,4 +1,5 @@
 import { useState, type SubmitEvent } from 'react'
+import { ActiveStatusDot } from '../components/ActiveStatusDot'
 import { Modal } from '../components/Modal'
 import {
   useCreatePourSize,
@@ -136,21 +137,18 @@ export function SettingsPourSizesPage() {
               <tr>
                 <th>Name</th>
                 <th className="numeric">Volume</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {pourSizes.map((pourSize) => (
                 <tr key={pourSize.id} className="data-table__row--clickable" onClick={() => openDetail(pourSize)}>
                   <td>
-                    <span className="row-link">{pourSize.name}</span>
+                    <div className="name-row">
+                      <ActiveStatusDot active={pourSize.active} />
+                      <span className="row-link">{pourSize.name}</span>
+                    </div>
                   </td>
                   <td className="numeric">{formatVolumeMl(pourSize.volumeMl)}</td>
-                  <td>
-                    <span className={`badge ${pourSize.active ? 'badge--confirmed' : 'badge--neutral'}`}>
-                      {pourSize.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
                 </tr>
               ))}
             </tbody>

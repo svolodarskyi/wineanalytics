@@ -444,6 +444,29 @@ table {
   color: var(--text-muted);
 }
 
+/* Compact active/inactive indicator for list rows - a single letter in a
+   circle placed before the name, instead of a separate Status column. */
+.status-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+.status-dot--active {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.status-dot--inactive {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+}
+
 /* --- Buttons --- */
 
 .btn {
@@ -586,6 +609,13 @@ table {
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
+}
+
+/* A status dot inline with a name, on one line - e.g. list rows. */
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* --- Match rows (invoice review) --- */

@@ -326,11 +326,11 @@ export class MockStore {
     return this.alertThresholds.find((threshold) => threshold.wineId === wineId)
   }
 
-  /** Creates or updates the one threshold a wine can have. */
+  /** Creates or updates the one threshold a wine can have, reactivating it if it was deactivated. */
   upsertThreshold(wineId: string, minBottles: number): WineAlertThreshold {
     const index = this.alertThresholds.findIndex((threshold) => threshold.wineId === wineId)
     if (index !== -1) {
-      const updated: WineAlertThreshold = { ...this.alertThresholds[index], minBottles }
+      const updated: WineAlertThreshold = { ...this.alertThresholds[index], minBottles, active: true }
       this.alertThresholds = this.alertThresholds.map((threshold, i) => (i === index ? updated : threshold))
       return updated
     }
@@ -338,10 +338,19 @@ export class MockStore {
       id: createId('threshold'),
       wineId,
       minBottles,
+      active: true,
       createdAt: new Date().toISOString(),
     }
     this.alertThresholds = [...this.alertThresholds, created]
     return created
+  }
+
+  setThresholdActive(wineId: string, active: boolean): WineAlertThreshold {
+    const index = this.alertThresholds.findIndex((threshold) => threshold.wineId === wineId)
+    if (index === -1) throw new Error('Alert level not found.')
+    const updated: WineAlertThreshold = { ...this.alertThresholds[index], active }
+    this.alertThresholds = this.alertThresholds.map((threshold, i) => (i === index ? updated : threshold))
+    return updated
   }
 
   deleteThreshold(wineId: string): void {
