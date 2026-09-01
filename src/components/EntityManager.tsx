@@ -13,13 +13,15 @@ const WINE_CATEGORY_OPTIONS: { value: WineCategory; label: string }[] = [
   { value: 'other', label: 'Other' },
 ]
 
+const VOLUME_ML_PRESETS = [187, 375, 500, 750, 1000, 1500, 3000]
+
 interface Entity {
   id: string
   name: string
   invoiceName?: string | null
   active: boolean
   country?: string | null
-  volume?: string | null
+  volumeMl?: number | null
   category?: WineCategory | null
   imageDataUrl?: string | null
 }
@@ -28,7 +30,7 @@ interface EntityInput {
   name: string
   invoiceName?: string | null
   country?: string
-  volume?: string
+  volumeMl?: number | null
   category?: WineCategory | null
   imageDataUrl?: string | null
 }
@@ -156,7 +158,7 @@ export function EntityManager({
         name: newName,
         invoiceName: newInvoiceName,
         country: newCountry,
-        volume: newVolume,
+        volumeMl: newVolume ? Number(newVolume) : null,
         category: newCategory || null,
         imageDataUrl: newImage,
       })
@@ -173,7 +175,7 @@ export function EntityManager({
     setDetailName(entity.name)
     setDetailInvoiceName(entity.invoiceName ?? '')
     setDetailCountry(entity.country ?? '')
-    setDetailVolume(entity.volume ?? '')
+    setDetailVolume(entity.volumeMl != null ? String(entity.volumeMl) : '')
     setDetailCategory(entity.category ?? '')
     setDetailImage(entity.imageDataUrl ?? null)
     setDetailError(null)
@@ -188,7 +190,7 @@ export function EntityManager({
         name: detailName,
         invoiceName: detailInvoiceName,
         country: detailCountry,
-        volume: detailVolume,
+        volumeMl: detailVolume ? Number(detailVolume) : null,
         category: detailCategory || null,
         imageDataUrl: detailImage,
       })
@@ -228,6 +230,13 @@ export function EntityManager({
 
   return (
     <div>
+      {showWineDetails && (
+        <datalist id="wine-volume-ml-presets">
+          {VOLUME_ML_PRESETS.map((ml) => (
+            <option key={ml} value={ml} />
+          ))}
+        </datalist>
+      )}
       <div className="page-header">
         <h2>{title}</h2>
         <button type="button" className="btn btn--primary" onClick={openCreateModal}>
@@ -268,12 +277,16 @@ export function EntityManager({
             )}
             {showWineDetails && (
               <div className="field">
-                <label htmlFor="new-entity-volume">Volume</label>
+                <label htmlFor="new-entity-volume">Volume (ml)</label>
                 <input
                   id="new-entity-volume"
+                  type="number"
+                  min="1"
+                  step="1"
+                  list="wine-volume-ml-presets"
                   value={newVolume}
                   onChange={(event) => setNewVolume(event.target.value)}
-                  placeholder="e.g. 750ml"
+                  placeholder="e.g. 750"
                 />
               </div>
             )}
@@ -341,12 +354,16 @@ export function EntityManager({
             )}
             {showWineDetails && (
               <div className="field">
-                <label htmlFor="detail-entity-volume">Volume</label>
+                <label htmlFor="detail-entity-volume">Volume (ml)</label>
                 <input
                   id="detail-entity-volume"
+                  type="number"
+                  min="1"
+                  step="1"
+                  list="wine-volume-ml-presets"
                   value={detailVolume}
                   onChange={(event) => setDetailVolume(event.target.value)}
-                  placeholder="e.g. 750ml"
+                  placeholder="e.g. 750"
                 />
               </div>
             )}

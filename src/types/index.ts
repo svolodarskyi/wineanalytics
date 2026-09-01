@@ -12,8 +12,8 @@ export interface Wine {
   /** Name as it typically appears on vendor invoices, if different from the display name. Falls back to `name` for matching when unset. */
   invoiceName: string | null
   country: string | null
-  /** Bottle size as free text, e.g. "750ml", "1.5L". */
-  volume: string | null
+  /** Bottle size in milliliters, e.g. 750, 1500. The standard unit for inventory/volume math - never a formatted string. */
+  volumeMl: number | null
   category: WineCategory | null
   /** Data URL of an uploaded label/bottle photo, if any. */
   imageDataUrl: string | null
@@ -46,8 +46,8 @@ export interface SkuMatch {
 export interface InvoiceLineItem {
   id: string
   itemNameRaw: string
-  /** Bottle size as extracted from the invoice, e.g. "750ml" - kept separate from itemNameRaw so it can pre-fill a new wine's `volume` field. */
-  volumeRaw: string | null
+  /** Bottle size in milliliters, normalized from whatever unit the invoice printed - kept separate from itemNameRaw so it can pre-fill a new wine's `volumeMl` field. */
+  volumeMlRaw: number | null
   /** Best-effort category guess from the item name, e.g. "red"/"white" - pre-fills a new wine's `category` field. */
   categoryRaw: WineCategory | null
   quantity: number

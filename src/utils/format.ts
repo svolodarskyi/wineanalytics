@@ -15,6 +15,13 @@ export function formatDateTime(iso: string): string {
   return date.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
+/** Bottle size stored as milliliters, displayed as "750ml" or "1.5L" for round liters. */
+export function formatVolumeMl(volumeMl: number | null): string {
+  if (volumeMl === null) return '-'
+  if (volumeMl >= 1000 && volumeMl % 1000 === 0) return `${volumeMl / 1000}L`
+  return `${volumeMl}ml`
+}
+
 export function formatDate(iso: string | null): string {
   if (!iso) return '-'
   const date = new Date(iso)

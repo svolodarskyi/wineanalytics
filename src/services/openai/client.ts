@@ -6,7 +6,7 @@ const WINE_CATEGORIES: readonly WineCategory[] = ['red', 'white', 'rose', 'spark
 
 export interface OpenAiExtractedLineItem {
   itemName: string
-  volume: string | null
+  volumeMl: number | null
   category: WineCategory | null
   quantity: number
   unitPrice: number
@@ -34,6 +34,12 @@ function toNumber(value: unknown): number {
   return Number.isFinite(num) ? num : 0
 }
 
+/** For volumeMl: 0 or an unparseable value isn't a real bottle size, so fall back to null rather than 0. */
+function toPositiveIntOrNull(value: unknown): number | null {
+  const num = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(num) && num > 0 ? Math.round(num) : null
+}
+
 /** The model is instructed to return this shape, but never trust it blindly - coerce defensively. */
 function coerceExtractedInvoice(value: unknown): OpenAiExtractedInvoice {
   const obj = (value ?? {}) as Record<string, unknown>
@@ -47,7 +53,7 @@ function coerceExtractedInvoice(value: unknown): OpenAiExtractedInvoice {
       const line = (item ?? {}) as Record<string, unknown>
       return {
         itemName: typeof line.itemName === 'string' ? line.itemName : 'Unknown item',
-        volume: typeof line.volume === 'string' && line.volume.trim() ? line.volume : null,
+        volumeMl: toPositiveIntOrNull(line.volumeMl),
         category: WINE_CATEGORIES.includes(line.category as WineCategory) ? (line.category as WineCategory) : null,
         quantity: toNumber(line.quantity),
         unitPrice: toNumber(line.unitPrice),

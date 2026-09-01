@@ -16,7 +16,7 @@ import {
 import { useCreateVendor, useVendors } from '../hooks/useVendors'
 import { useCreateWine, useWines } from '../hooks/useWines'
 import type { InvoiceLineItem } from '../types'
-import { formatCurrency, formatDate } from '../utils/format'
+import { formatCurrency, formatDate, formatVolumeMl } from '../utils/format'
 
 type ActivePicker = 'vendor' | { lineItemId: string } | null
 
@@ -341,7 +341,7 @@ function LineItemRow({
   return (
     <tr>
       <td>{line.itemNameRaw}</td>
-      <td>{line.volumeRaw ?? '-'}</td>
+      <td>{formatVolumeMl(line.volumeMlRaw)}</td>
       <td className="numeric">{line.quantity}</td>
       <td className="numeric">{formatCurrency(line.unitPrice)}</td>
       <td className="numeric">{formatCurrency(line.lineTotal)}</td>
@@ -377,7 +377,7 @@ function LineItemRow({
                   createWine.mutateAsync({
                     name,
                     invoiceName: name,
-                    volume: line.volumeRaw,
+                    volumeMl: line.volumeMlRaw,
                     category: line.categoryRaw,
                   })
                 }

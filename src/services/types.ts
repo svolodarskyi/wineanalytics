@@ -36,7 +36,7 @@ export interface WineService {
     name: string
     invoiceName?: string | null
     country?: string | null
-    volume?: string | null
+    volumeMl?: number | null
     category?: WineCategory | null
     imageDataUrl?: string | null
   }): Promise<Wine>
@@ -46,7 +46,7 @@ export interface WineService {
       name: string
       invoiceName?: string | null
       country?: string | null
-      volume?: string | null
+      volumeMl?: number | null
       category?: WineCategory | null
       imageDataUrl?: string | null
     },
@@ -95,7 +95,7 @@ export interface AuthService {
 
 export interface OpenAiExtractedLine {
   itemNameRaw: string
-  volumeRaw: string | null
+  volumeMlRaw: number | null
   categoryRaw: WineCategory | null
   quantity: number
   unitPrice: number

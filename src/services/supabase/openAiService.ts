@@ -53,7 +53,7 @@ export function createSupabaseOpenAiService(supabase: SupabaseClient): OpenAiSer
           totalAmount: result.parsed.totalAmount,
           lines: result.parsed.lineItems.map((item) => ({
             itemNameRaw: item.itemName,
-            volumeRaw: item.volume,
+            volumeMlRaw: item.volumeMl,
             categoryRaw: item.category,
             quantity: item.quantity,
             unitPrice: item.unitPrice,

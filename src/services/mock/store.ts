@@ -136,7 +136,7 @@ export class MockStore {
       lineItems: sample.lines.map((line) => ({
         id: createId('line'),
         itemNameRaw: line.itemNameRaw,
-        volumeRaw: null,
+        volumeMlRaw: null,
         categoryRaw: null,
         quantity: line.quantity,
         unitPrice: line.unitPrice,
@@ -199,7 +199,7 @@ export class MockStore {
       totalAmount: number
       lines: {
         itemNameRaw: string
-        volumeRaw: string | null
+        volumeMlRaw: number | null
         categoryRaw: Wine['category']
         quantity: number
         unitPrice: number
@@ -223,7 +223,7 @@ export class MockStore {
       lineItems: extraction.lines.map((line) => ({
         id: createId('line'),
         itemNameRaw: line.itemNameRaw,
-        volumeRaw: line.volumeRaw,
+        volumeMlRaw: line.volumeMlRaw,
         categoryRaw: line.categoryRaw,
         quantity: line.quantity,
         unitPrice: line.unitPrice,

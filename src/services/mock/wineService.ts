@@ -8,6 +8,11 @@ function compareWines(a: Wine, b: Wine): number {
   return a.name.localeCompare(b.name)
 }
 
+/** 0 or an unparseable value isn't a real bottle size, so normalize to null rather than 0. */
+function normalizeVolumeMl(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.round(value) : null
+}
+
 export function createMockWineService(store: MockStore, latencyMs: number): WineService {
   return {
     async list(options?: WineListOptions): Promise<Wine[]> {
@@ -34,7 +39,7 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
       name: string
       invoiceName?: string | null
       country?: string | null
-      volume?: string | null
+      volumeMl?: number | null
       category?: Wine['category']
       imageDataUrl?: string | null
     }): Promise<Wine> {
@@ -48,7 +53,7 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
         name,
         invoiceName: input.invoiceName?.trim() || null,
         country: input.country?.trim() || null,
-        volume: input.volume?.trim() || null,
+        volumeMl: normalizeVolumeMl(input.volumeMl),
         category: input.category ?? null,
         imageDataUrl: input.imageDataUrl ?? null,
         active: true,
@@ -64,7 +69,7 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
         name: string
         invoiceName?: string | null
         country?: string | null
-        volume?: string | null
+        volumeMl?: number | null
         category?: Wine['category']
         imageDataUrl?: string | null
       },
@@ -78,7 +83,7 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
         name,
         invoiceName: input.invoiceName?.trim() || null,
         country: input.country?.trim() || null,
-        volume: input.volume?.trim() || null,
+        volumeMl: normalizeVolumeMl(input.volumeMl),
         category: input.category ?? null,
         imageDataUrl: input.imageDataUrl !== undefined ? input.imageDataUrl : wine.imageDataUrl,
       }))

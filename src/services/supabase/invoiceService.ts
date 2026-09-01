@@ -28,7 +28,7 @@ interface InvoiceRow {
 interface LineItemRow {
   id: string
   item_name_raw: string
-  volume_raw: string | null
+  volume_ml_raw: number | null
   category_raw: WineCategory | null
   quantity: number
   unit_price: number
@@ -73,7 +73,7 @@ async function toInvoice(supabase: SupabaseClient, row: InvoiceRow): Promise<Inv
     lineItems: (row.wine_invoice_line_items ?? []).map((li) => ({
       id: li.id,
       itemNameRaw: li.item_name_raw,
-      volumeRaw: li.volume_raw,
+      volumeMlRaw: li.volume_ml_raw,
       categoryRaw: li.category_raw,
       quantity: Number(li.quantity),
       unitPrice: Number(li.unit_price),
@@ -157,7 +157,7 @@ async function completeProcessingFromExtraction(
         return {
           invoice_id: invoiceId,
           item_name_raw: line.itemNameRaw,
-          volume_raw: line.volumeRaw,
+          volume_ml_raw: line.volumeMlRaw,
           category_raw: line.categoryRaw,
           quantity: line.quantity,
           unit_price: line.unitPrice,

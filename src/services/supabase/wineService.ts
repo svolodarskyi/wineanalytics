@@ -10,7 +10,7 @@ interface WineRow {
   name: string
   invoice_name: string | null
   country: string | null
-  volume: string | null
+  volume_ml: number | null
   category: Wine['category']
   image_url: string | null
   active: boolean
@@ -23,7 +23,7 @@ async function toWine(supabase: SupabaseClient, row: WineRow): Promise<Wine> {
     name: row.name,
     invoiceName: row.invoice_name,
     country: row.country,
-    volume: row.volume,
+    volumeMl: row.volume_ml,
     category: row.category,
     imageDataUrl: await resolveSignedUrl(supabase, PHOTOS_BUCKET, row.image_url),
     active: row.active,
@@ -33,6 +33,11 @@ async function toWine(supabase: SupabaseClient, row: WineRow): Promise<Wine> {
 
 function throwIfError(error: { message: string } | null): void {
   if (error) throw new Error(error.message)
+}
+
+/** 0 or an unparseable value isn't a real bottle size, so normalize to null rather than 0. */
+function normalizeVolumeMl(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.round(value) : null
 }
 
 /**
@@ -81,7 +86,7 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
       name: string
       invoiceName?: string | null
       country?: string | null
-      volume?: string | null
+      volumeMl?: number | null
       category?: Wine['category']
       imageDataUrl?: string | null
     }): Promise<Wine> {
@@ -101,7 +106,7 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
           name,
           invoice_name: input.invoiceName?.trim() || null,
           country: input.country?.trim() || null,
-          volume: input.volume?.trim() || null,
+          volume_ml: normalizeVolumeMl(input.volumeMl),
           category: input.category ?? null,
           image_url: imagePath,
         })
@@ -120,7 +125,7 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
         name: string
         invoiceName?: string | null
         country?: string | null
-        volume?: string | null
+        volumeMl?: number | null
         category?: Wine['category']
         imageDataUrl?: string | null
       },
@@ -144,7 +149,7 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
           name,
           invoice_name: input.invoiceName?.trim() || null,
           country: input.country?.trim() || null,
-          volume: input.volume?.trim() || null,
+          volume_ml: normalizeVolumeMl(input.volumeMl),
           category: input.category ?? null,
           ...(imagePath !== undefined ? { image_url: imagePath } : {}),
         })

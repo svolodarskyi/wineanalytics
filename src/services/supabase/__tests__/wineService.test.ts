@@ -8,7 +8,7 @@ const ROW = {
   name: 'Caymus Cabernet Sauvignon',
   invoice_name: null,
   country: 'USA',
-  volume: null,
+  volume_ml: null,
   category: null,
   image_url: null,
   active: true,
@@ -31,7 +31,7 @@ describe('supabase wine service', () => {
         name: 'Caymus Cabernet Sauvignon',
         invoiceName: null,
         country: 'USA',
-        volume: null,
+        volumeMl: null,
         category: null,
         imageDataUrl: null,
         active: true,
@@ -95,14 +95,14 @@ describe('supabase wine service', () => {
     expect(updateBuilder.update).toHaveBeenCalledWith(expect.objectContaining({ image_url: null }))
   })
 
-  it('create sends volume and category through to the insert payload', async () => {
-    const from = vi.fn(() => fakeQueryBuilder({ data: { ...ROW, volume: '750ml', category: 'red' } }))
+  it('create sends volumeMl and category through to the insert payload', async () => {
+    const from = vi.fn(() => fakeQueryBuilder({ data: { ...ROW, volume_ml: 750, category: 'red' } }))
     const wines = createSupabaseWineService(supabaseWith(from))
-    const wine = await wines.create({ name: 'New Wine', volume: '750ml', category: 'red' })
-    expect(wine.volume).toBe('750ml')
+    const wine = await wines.create({ name: 'New Wine', volumeMl: 750, category: 'red' })
+    expect(wine.volumeMl).toBe(750)
     expect(wine.category).toBe('red')
     const insertBuilder = from.mock.results[0].value
-    expect(insertBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({ volume: '750ml', category: 'red' }))
+    expect(insertBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({ volume_ml: 750, category: 'red' }))
   })
 
   it('delete blocks when the wine has invoice history', async () => {

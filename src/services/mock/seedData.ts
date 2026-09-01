@@ -16,7 +16,7 @@ export function seedWines(): Wine[] {
     name,
     invoiceName: null,
     country,
-    volume: null,
+    volumeMl: 750,
     category,
     imageDataUrl: null,
     active: true,

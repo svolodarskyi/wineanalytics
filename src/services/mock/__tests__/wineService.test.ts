@@ -48,17 +48,17 @@ describe('mock wine service', () => {
     expect(updated.invoiceName).toBe('CAYMUS CS 750')
   })
 
-  it('stores volume and category, defaulting to null', async () => {
+  it('stores volumeMl and category, defaulting to null', async () => {
     const bare = await services.wines.create({ name: 'Bare Wine' })
-    expect(bare.volume).toBeNull()
+    expect(bare.volumeMl).toBeNull()
     expect(bare.category).toBeNull()
 
-    const detailed = await services.wines.create({ name: 'Detailed Wine', volume: '750ml', category: 'red' })
-    expect(detailed.volume).toBe('750ml')
+    const detailed = await services.wines.create({ name: 'Detailed Wine', volumeMl: 750, category: 'red' })
+    expect(detailed.volumeMl).toBe(750)
     expect(detailed.category).toBe('red')
 
-    const updated = await services.wines.update(detailed.id, { name: 'Detailed Wine', volume: '1.5L', category: 'white' })
-    expect(updated.volume).toBe('1.5L')
+    const updated = await services.wines.update(detailed.id, { name: 'Detailed Wine', volumeMl: 1500, category: 'white' })
+    expect(updated.volumeMl).toBe(1500)
     expect(updated.category).toBe('white')
   })
 
