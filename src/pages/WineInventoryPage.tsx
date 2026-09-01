@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useInvoices } from '../hooks/useInvoices'
 import { useWineBalances } from '../hooks/useWines'
+import { formatBottles } from '../utils/format'
 
 export function WineInventoryPage() {
   const { data: balances, isLoading, error } = useWineBalances()
@@ -11,7 +12,7 @@ export function WineInventoryPage() {
       <div className="page-header">
         <div>
           <h1>Wine Inventory</h1>
-          <p className="page-header__meta">Balance in bottles, from approved invoices only.</p>
+          <p className="page-header__meta">Ending bottles: purchased from approved invoices, minus sold.</p>
         </div>
       </div>
 
@@ -34,7 +35,7 @@ export function WineInventoryPage() {
             <thead>
               <tr>
                 <th>Wine</th>
-                <th className="numeric">Balance in Bottles</th>
+                <th className="numeric">Ending Bottles</th>
               </tr>
             </thead>
             <tbody>
@@ -45,7 +46,7 @@ export function WineInventoryPage() {
                       {wine.name}
                     </Link>
                   </td>
-                  <td className="numeric">{balanceInBottles}</td>
+                  <td className="numeric">{formatBottles(balanceInBottles)}</td>
                 </tr>
               ))}
             </tbody>

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetTestServices, testServicesState } from '../../test/mockServices'
 import { renderWithProviders } from '../../test/renderWithProviders'
@@ -15,7 +15,7 @@ describe('WineDetailPage', () => {
     resetTestServices({ seed: false })
   })
 
-  it('shows a zero balance and an empty purchase history for a wine with no approved invoices', async () => {
+  it('shows the wine name, a zero ending balance, and links to both tabs', async () => {
     const wine = await testServicesState.current.wines.create({ name: 'Untouched Wine' })
 
     renderWithProviders(<WineDetailPage />, {
@@ -23,19 +23,21 @@ describe('WineDetailPage', () => {
       path: '/wines/:wineId',
     })
 
+    expect(await screen.findByRole('heading', { name: 'Untouched Wine' })).toBeInTheDocument()
     expect(await screen.findByText('0 bottles')).toBeInTheDocument()
-    expect(await screen.findByText(/no approved purchases yet/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Purchases' })).toHaveAttribute('href', `/wines/${wine.id}/purchases`)
+    expect(screen.getByRole('link', { name: 'Sales' })).toHaveAttribute('href', `/wines/${wine.id}/sales`)
   })
 
-  it('shows the running balance and a purchase history row with a link back to the invoice', async () => {
-    const wine = await testServicesState.current.wines.create({ name: 'Purchased Wine' })
-    const vendor = await testServicesState.current.vendors.create({ name: 'History Vendor' })
+  it('reflects purchases minus sales in the ending balance', async () => {
+    const wine = await testServicesState.current.wines.create({ name: 'Sold Wine', volumeMl: 750 })
+    const vendor = await testServicesState.current.vendors.create({ name: 'Vendor' })
     const invoice = await testServicesState.current.invoices.upload({
       fileName: 'inv.pdf',
       fileType: 'pdf',
       fileDataUrl: 'data:application/pdf;base64,AA==',
     })
-    await waitFor(async () => {
+    await vi.waitFor(async () => {
       const current = await testServicesState.current.invoices.get(invoice.id)
       expect(current?.status).toBe('not_approved')
     })
@@ -45,6 +47,7 @@ describe('WineDetailPage', () => {
       await testServicesState.current.invoices.selectSkuMatch(invoice.id, line.id, wine.id)
     }
     await testServicesState.current.invoices.approve(invoice.id)
+    await testServicesState.current.sales.create({ wineId: wine.id, soldAt: '2026-01-01T00:00:00.000Z', volumeMl: 750 })
 
     renderWithProviders(<WineDetailPage />, {
       route: `/wines/${wine.id}`,
@@ -52,12 +55,6 @@ describe('WineDetailPage', () => {
     })
 
     const totalBottles = processed!.lineItems.reduce((sum, l) => sum + l.quantity, 0)
-    expect(await screen.findByText(`${totalBottles} bottles`)).toBeInTheDocument()
-    expect(screen.getAllByText('History Vendor').length).toBe(processed!.lineItems.length)
-
-    const invoiceLinks = screen.getAllByRole('link', { name: /view invoice/i })
-    for (const link of invoiceLinks) {
-      expect(link).toHaveAttribute('href', `/invoices/${invoice.id}`)
-    }
+    expect(await screen.findByText(`${totalBottles - 1} bottles`)).toBeInTheDocument()
   })
 })

@@ -5,6 +5,7 @@ import { Modal } from '../components/Modal'
 import { useAlertThresholds, useDeleteAlertThreshold, useInventoryAlerts, useSetAlertThreshold } from '../hooks/useAlerts'
 import { useWines } from '../hooks/useWines'
 import type { Wine } from '../types'
+import { formatBottles } from '../utils/format'
 
 type ThresholdModalState = { wine: Wine; minBottles: string } | { wine: null } | null
 
@@ -110,7 +111,7 @@ export function AlertsInventoryPage() {
                       <span className="badge badge--low">Low stock</span>
                     </div>
                   </td>
-                  <td className="numeric">{alert.balanceInBottles}</td>
+                  <td className="numeric">{formatBottles(alert.balanceInBottles)}</td>
                   <td className="numeric">{alert.minBottles}</td>
                 </tr>
               ))}

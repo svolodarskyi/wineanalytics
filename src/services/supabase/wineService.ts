@@ -193,9 +193,11 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
         .order('name', { ascending: true })
       throwIfError(winesError)
 
-      const balanceByWineId = await fetchBalanceByWineId(supabase)
-
       const wines = await Promise.all((wineRows as WineRow[]).map((row) => toWine(supabase, row)))
+      const balanceByWineId = await fetchBalanceByWineId(
+        supabase,
+        wines.map((wine) => ({ id: wine.id, volumeMl: wine.volumeMl })),
+      )
       return wines.map((wine) => ({ wine, balanceInBottles: balanceByWineId.get(wine.id) ?? 0 }))
     },
 

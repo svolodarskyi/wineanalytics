@@ -3,6 +3,8 @@ import { createMockAlertService } from './alertService'
 import { createMockAuthService } from './authService'
 import { createMockInvoiceService } from './invoiceService'
 import { createOpenAiService } from './openAiService'
+import { createMockPourSizeService } from './pourSizeService'
+import { createMockSaleService } from './saleService'
 import { MockStore, type MockStoreOptions } from './store'
 import { createMockVendorService } from './vendorService'
 import { createMockWineService } from './wineService'
@@ -31,6 +33,8 @@ export function createMockServices(options: MockServicesOptions = {}): Services 
     invoices: createMockInvoiceService(store, { latencyMs, processingDelayMs }, openai),
     openai,
     alerts: createMockAlertService(store, latencyMs),
+    pourSizes: createMockPourSizeService(store, latencyMs),
+    sales: createMockSaleService(store, latencyMs),
   }
 }
 

@@ -18,4 +18,11 @@ export const queryKeys = {
   inventoryAlerts: () => ['alerts', 'inventory'] as const,
   dataQualityAlerts: () => ['alerts', 'data-quality'] as const,
   alertThresholds: () => ['alerts', 'thresholds'] as const,
+  salesQualityAlerts: () => ['alerts', 'sales-quality'] as const,
+  salesAlertThreshold: () => ['alerts', 'sales-quality', 'threshold'] as const,
+
+  pourSizes: (options?: ListOptions) => ['pour-sizes', options ?? {}] as const,
+  pourSize: (id: string) => ['pour-sizes', id] as const,
+
+  sales: (wineId: string) => ['sales', wineId] as const,
 }

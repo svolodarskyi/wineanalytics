@@ -22,6 +22,12 @@ export function formatVolumeMl(volumeMl: number | null): string {
   return `${volumeMl}ml`
 }
 
+/** Ending balance can be fractional (partial bottles sold by the glass) or negative (oversold) - round to 1 decimal, dropping it entirely when the value is a whole number. */
+export function formatBottles(value: number): string {
+  const rounded = Math.round(value * 10) / 10
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+}
+
 export function formatDate(iso: string | null): string {
   if (!iso) return '-'
   const date = new Date(iso)

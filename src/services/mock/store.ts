@@ -3,14 +3,17 @@ import type {
   Invoice,
   InvoiceLineItem,
   OpenAiRequestLog,
+  PourSize,
+  SalesAlertThreshold,
   Vendor,
   VendorMatch,
   Wine,
   WineAlertThreshold,
+  WineSale,
 } from '../../types'
 import { createId } from './ids'
 import { nextSampleInvoice } from './sampleInvoices'
-import { seedVendors, seedWines } from './seedData'
+import { seedPourSizes, seedVendors, seedWines } from './seedData'
 import { confidenceFromScore, findBestMatch } from './similarity'
 
 export interface MockStoreOptions {
@@ -28,11 +31,15 @@ export class MockStore {
   invoices: Invoice[] = []
   openAiLogs: OpenAiRequestLog[] = []
   alertThresholds: WineAlertThreshold[] = []
+  pourSizes: PourSize[]
+  sales: WineSale[] = []
+  salesAlertThreshold: SalesAlertThreshold = { minVolumeMl: null, maxVolumeMl: null }
 
   constructor(options: MockStoreOptions = {}) {
     const seed = options.seed ?? true
     this.wines = seed ? seedWines() : []
     this.vendors = seed ? seedVendors() : []
+    this.pourSizes = seed ? seedPourSizes() : []
   }
 
   findWine(id: string): Wine | undefined {
@@ -45,6 +52,10 @@ export class MockStore {
 
   findInvoice(id: string): Invoice | undefined {
     return this.invoices.find((invoice) => invoice.id === id)
+  }
+
+  findPourSize(id: string): PourSize | undefined {
+    return this.pourSizes.find((pourSize) => pourSize.id === id)
   }
 
   /**
@@ -76,6 +87,14 @@ export class MockStore {
     return updated
   }
 
+  updatePourSize(id: string, updater: (pourSize: PourSize) => PourSize): PourSize {
+    const index = this.pourSizes.findIndex((pourSize) => pourSize.id === id)
+    if (index === -1) throw new Error('Pour size not found.')
+    const updated = updater(this.pourSizes[index])
+    this.pourSizes[index] = updated
+    return updated
+  }
+
   /** True if any invoice (any status) has a line item matched to this wine. */
   isWineInUse(id: string): boolean {
     return this.invoices.some((invoice) => invoice.lineItems.some((line) => line.skuMatch.wineId === id))
@@ -84,6 +103,11 @@ export class MockStore {
   /** True if any invoice (any status) has its vendor matched to this vendor. */
   isVendorInUse(id: string): boolean {
     return this.invoices.some((invoice) => invoice.extracted.vendorMatch.vendorId === id)
+  }
+
+  /** True if any recorded sale used this pour size. */
+  isPourSizeInUse(id: string): boolean {
+    return this.sales.some((sale) => sale.pourSizeId === id)
   }
 
   deleteWine(id: string): void {
@@ -96,6 +120,12 @@ export class MockStore {
     const index = this.vendors.findIndex((vendor) => vendor.id === id)
     if (index === -1) throw new Error('Vendor not found.')
     this.vendors.splice(index, 1)
+  }
+
+  deletePourSize(id: string): void {
+    const index = this.pourSizes.findIndex((pourSize) => pourSize.id === id)
+    if (index === -1) throw new Error('Pour size not found.')
+    this.pourSizes.splice(index, 1)
   }
 
   vendorMatchFor(rawName: string): VendorMatch {
@@ -247,13 +277,27 @@ export class MockStore {
     this.openAiLogs = [entry, ...this.openAiLogs]
   }
 
-  /** Total quantity across every approved invoice line item matched to this wine. Shared by wineService.getBalances() and alertService.listInventoryAlerts(). */
+  /**
+   * Purchased (approved invoices) minus sold-bottle-equivalent. Shared by
+   * wineService.getBalances() and alertService.listInventoryAlerts().
+   * A wine with no volumeMl can't convert its sales to a bottle-equivalent,
+   * so it falls back to purchased-only rather than guessing - the missing
+   * volume is already surfaced separately via the data-quality alert.
+   */
   balanceInBottles(wineId: string): number {
-    return this.invoices
+    const purchased = this.invoices
       .filter((invoice) => invoice.status === 'approved')
       .flatMap((invoice) => invoice.lineItems)
       .filter((line) => line.skuMatch.wineId === wineId)
       .reduce((sum, line) => sum + line.quantity, 0)
+
+    const wine = this.findWine(wineId)
+    if (!wine?.volumeMl) return purchased
+
+    const soldMl = this.sales
+      .filter((sale) => sale.wineId === wineId)
+      .reduce((sum, sale) => sum + sale.volumeMl * sale.quantity, 0)
+    return purchased - soldMl / wine.volumeMl
   }
 
   findThreshold(wineId: string): WineAlertThreshold | undefined {
@@ -280,5 +324,17 @@ export class MockStore {
 
   deleteThreshold(wineId: string): void {
     this.alertThresholds = this.alertThresholds.filter((threshold) => threshold.wineId !== wineId)
+  }
+
+  addSale(sale: WineSale): void {
+    this.sales = [sale, ...this.sales]
+  }
+
+  deleteSale(id: string): void {
+    this.sales = this.sales.filter((sale) => sale.id !== id)
+  }
+
+  setSalesAlertThreshold(threshold: SalesAlertThreshold): void {
+    this.salesAlertThreshold = threshold
   }
 }

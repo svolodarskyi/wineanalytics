@@ -11,6 +11,10 @@ export function SettingsWinesPage() {
   const navigate = useNavigate()
   const autoOpenWineId = searchParams.get('wineId') ?? undefined
   const cameFromAlerts = searchParams.get('from') === 'alerts'
+  // Captured once at mount, before onAutoOpened strips ?wineId= from the URL, so we can still navigate back to it on close.
+  const [returnToWineId] = useState(() =>
+    searchParams.get('from') === 'wine-detail' ? searchParams.get('wineId') : null,
+  )
 
   const createWine = useCreateWine()
   const updateWine = useUpdateWine()
@@ -42,6 +46,7 @@ export function SettingsWinesPage() {
       }}
       onDetailClosed={() => {
         if (cameFromAlerts) navigate('/alerts/data-quality')
+        else if (returnToWineId) navigate(`/wines/${returnToWineId}/data-quality`)
       }}
     />
   )

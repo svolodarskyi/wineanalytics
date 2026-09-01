@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { services } from '../services'
+import type { SalesAlertThreshold } from '../types'
 import { queryKeys } from './queryKeys'
 
 export function useInventoryAlerts() {
@@ -23,6 +24,20 @@ export function useAlertThresholds() {
   })
 }
 
+export function useSalesQualityAlerts() {
+  return useQuery({
+    queryKey: queryKeys.salesQualityAlerts(),
+    queryFn: () => services.alerts.listSalesQualityAlerts(),
+  })
+}
+
+export function useSalesAlertThreshold() {
+  return useQuery({
+    queryKey: queryKeys.salesAlertThreshold(),
+    queryFn: () => services.alerts.getSalesAlertThreshold(),
+  })
+}
+
 function useInvalidateAlerts() {
   const queryClient = useQueryClient()
   return () => queryClient.invalidateQueries({ queryKey: ['alerts'] })
@@ -41,6 +56,14 @@ export function useDeleteAlertThreshold() {
   const invalidate = useInvalidateAlerts()
   return useMutation({
     mutationFn: (wineId: string) => services.alerts.deleteThreshold(wineId),
+    onSuccess: invalidate,
+  })
+}
+
+export function useSetSalesAlertThreshold() {
+  const invalidate = useInvalidateAlerts()
+  return useMutation({
+    mutationFn: (input: SalesAlertThreshold) => services.alerts.setSalesAlertThreshold(input),
     onSuccess: invalidate,
   })
 }

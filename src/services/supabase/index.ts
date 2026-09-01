@@ -4,6 +4,8 @@ import { createSupabaseAuthService } from './authService'
 import { getSupabaseClient } from './client'
 import { createSupabaseInvoiceService } from './invoiceService'
 import { createSupabaseOpenAiService } from './openAiService'
+import { createSupabasePourSizeService } from './pourSizeService'
+import { createSupabaseSaleService } from './saleService'
 import { createSupabaseVendorService } from './vendorService'
 import { createSupabaseWineService } from './wineService'
 
@@ -23,5 +25,7 @@ export function createSupabaseServices(): Services {
     invoices: createSupabaseInvoiceService(supabase, openai),
     openai,
     alerts: createSupabaseAlertService(supabase),
+    pourSizes: createSupabasePourSizeService(supabase),
+    sales: createSupabaseSaleService(supabase),
   }
 }

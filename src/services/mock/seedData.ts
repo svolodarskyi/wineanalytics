@@ -1,4 +1,4 @@
-import type { Vendor, Wine } from '../../types'
+import type { PourSize, Vendor, Wine } from '../../types'
 import { createId } from './ids'
 
 export function seedWines(): Wine[] {
@@ -28,4 +28,13 @@ export function seedVendors(): Vendor[] {
   const now = new Date().toISOString()
   const names = ["Winebow Imports", "Southern Glazer's Wine & Spirits", 'Vintner Select']
   return names.map((name) => ({ id: createId('vendor'), name, invoiceName: null, active: true, createdAt: now }))
+}
+
+export function seedPourSizes(): PourSize[] {
+  const now = new Date().toISOString()
+  const sizes: { name: string; volumeMl: number }[] = [
+    { name: 'Taste', volumeMl: 75 },
+    { name: 'Glass', volumeMl: 150 },
+  ]
+  return sizes.map(({ name, volumeMl }) => ({ id: createId('pour'), name, volumeMl, active: true, createdAt: now }))
 }

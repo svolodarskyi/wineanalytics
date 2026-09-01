@@ -6,12 +6,16 @@ import type {
   InventoryAlert,
   InvoiceStatus,
   OpenAiRequestLog,
+  PourSize,
   PurchaseHistoryEntry,
+  SalesAlertThreshold,
+  SalesQualityAlert,
   Vendor,
   Wine,
   WineAlertThreshold,
   WineBalance,
   WineCategory,
+  WineSale,
 } from '../types'
 
 /**
@@ -105,6 +109,38 @@ export interface AlertService {
   /** Creates or updates the one threshold a wine can have. */
   setThreshold(wineId: string, minBottles: number): Promise<WineAlertThreshold>
   deleteThreshold(wineId: string): Promise<void>
+  /** Sales whose volume falls outside the single global min/max configured via setSalesAlertThreshold. */
+  listSalesQualityAlerts(): Promise<SalesQualityAlert[]>
+  getSalesAlertThreshold(): Promise<SalesAlertThreshold>
+  setSalesAlertThreshold(input: SalesAlertThreshold): Promise<SalesAlertThreshold>
+}
+
+export interface PourSizeService {
+  list(options?: ListOptions): Promise<PourSize[]>
+  get(id: string): Promise<PourSize | null>
+  create(input: { name: string; volumeMl: number }): Promise<PourSize>
+  update(id: string, input: { name: string; volumeMl: number }): Promise<PourSize>
+  setActive(id: string, active: boolean): Promise<PourSize>
+  /** Permanently removes a pour size that has never been used in a sale. Throws if it has sale history - deactivate instead. */
+  delete(id: string): Promise<void>
+}
+
+export interface SaleService {
+  list(wineId: string): Promise<WineSale[]>
+  /**
+   * Records a manual sale. Exactly one of pourSizeId or volumeMl is expected:
+   * a named pour size resolves its own per-unit ml, otherwise volumeMl is used
+   * directly (a full-bottle or custom-ml entry). `quantity` is how many of
+   * that unit were sold - e.g. 3 glasses in one entry - and defaults to 1.
+   */
+  create(input: {
+    wineId: string
+    soldAt: string
+    pourSizeId?: string | null
+    volumeMl?: number
+    quantity?: number
+  }): Promise<WineSale>
+  delete(id: string): Promise<void>
 }
 
 export interface OpenAiExtractedLine {
@@ -135,4 +171,6 @@ export interface Services {
   invoices: InvoiceService
   openai: OpenAiService
   alerts: AlertService
+  pourSizes: PourSizeService
+  sales: SaleService
 }

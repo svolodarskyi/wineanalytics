@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 const SETTINGS_TABS = [
   { to: '/settings/wines', label: 'Wines' },
   { to: '/settings/vendors', label: 'Vendors' },
+  { to: '/settings/pour-sizes', label: 'Pour Sizes' },
   { to: '/settings/ai-requests', label: 'AI Requests' },
 ]
 

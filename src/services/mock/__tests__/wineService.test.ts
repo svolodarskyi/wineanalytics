@@ -160,5 +160,61 @@ describe('mock wine service', () => {
         unitPrice: first.unitPrice,
       })
     })
+
+    it('subtracts sold volume, converted to bottle-equivalent via the wine\'s own volumeMl', async () => {
+      const wine = await services.wines.create({ name: 'Sold Wine', volumeMl: 750 })
+      const vendor = await services.vendors.create({ name: 'Vendor' })
+      const invoice = await services.invoices.upload({
+        fileName: 'inv.pdf',
+        fileType: 'pdf',
+        fileDataUrl: 'data:application/pdf;base64,AA==',
+      })
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      const processed = await services.invoices.get(invoice.id)
+      await services.invoices.selectVendorMatch(invoice.id, vendor.id)
+      for (const line of processed!.lineItems) {
+        await services.invoices.selectSkuMatch(invoice.id, line.id, wine.id)
+      }
+      await services.invoices.approve(invoice.id)
+      const purchased = processed!.lineItems.reduce((sum, l) => sum + l.quantity, 0)
+
+      // Sell 2 full bottles (2 * 750ml) and 3 glasses via a 150ml pour size (450ml) - 2.6 bottles total.
+      await services.sales.create({ wineId: wine.id, soldAt: '2026-01-01T00:00:00.000Z', volumeMl: 750, quantity: 2 })
+      const pourSize = await services.pourSizes.create({ name: 'Test Pour', volumeMl: 150 })
+      await services.sales.create({
+        wineId: wine.id,
+        soldAt: '2026-01-02T00:00:00.000Z',
+        pourSizeId: pourSize.id,
+        quantity: 3,
+      })
+
+      const balances = await services.wines.getBalances()
+      const balance = balances.find((b) => b.wine.id === wine.id)
+      expect(balance?.balanceInBottles).toBeCloseTo(purchased - 2.6, 5)
+    })
+
+    it('falls back to purchased-only when the wine has no volumeMl set', async () => {
+      const wine = await services.wines.create({ name: 'No Volume Wine' })
+      const vendor = await services.vendors.create({ name: 'Vendor' })
+      const invoice = await services.invoices.upload({
+        fileName: 'inv.pdf',
+        fileType: 'pdf',
+        fileDataUrl: 'data:application/pdf;base64,AA==',
+      })
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      const processed = await services.invoices.get(invoice.id)
+      await services.invoices.selectVendorMatch(invoice.id, vendor.id)
+      for (const line of processed!.lineItems) {
+        await services.invoices.selectSkuMatch(invoice.id, line.id, wine.id)
+      }
+      await services.invoices.approve(invoice.id)
+      const purchased = processed!.lineItems.reduce((sum, l) => sum + l.quantity, 0)
+
+      await services.sales.create({ wineId: wine.id, soldAt: '2026-01-01T00:00:00.000Z', volumeMl: 500 })
+
+      const balances = await services.wines.getBalances()
+      const balance = balances.find((b) => b.wine.id === wine.id)
+      expect(balance?.balanceInBottles).toBe(purchased)
+    })
   })
 })

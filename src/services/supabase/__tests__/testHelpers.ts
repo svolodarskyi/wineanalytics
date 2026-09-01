@@ -23,6 +23,7 @@ export function fakeQueryBuilder(result: FakeQueryResult) {
     eq: vi.fn(() => builder),
     ilike: vi.fn(() => builder),
     order: vi.fn(() => builder),
+    limit: vi.fn(() => builder),
     single: vi.fn(() => Promise.resolve(resolved)),
     maybeSingle: vi.fn(() => Promise.resolve(resolved)),
     then: (onFulfilled: (value: FakeQueryResult) => unknown) => Promise.resolve(resolved).then(onFulfilled),

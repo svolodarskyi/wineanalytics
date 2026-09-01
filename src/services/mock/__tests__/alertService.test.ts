@@ -174,4 +174,70 @@ describe('mock alert service', () => {
       expect(await alerts.listDataQualityAlerts()).toEqual([])
     })
   })
+
+  describe('sales quality alerts', () => {
+    function pushWineAndSale(store: MockStore, volumeMl: number) {
+      const wine = { id: createId('wine'), name: 'Wine', invoiceName: null, country: null, volumeMl: null, category: null, imageDataUrl: null, active: true, createdAt: new Date().toISOString() }
+      store.wines.push(wine)
+      store.addSale({
+        id: createId('sale'),
+        wineId: wine.id,
+        pourSizeId: null,
+        volumeMl,
+        quantity: 1,
+        soldAt: '2026-01-01T00:00:00.000Z',
+        source: 'manual',
+        createdAt: new Date().toISOString(),
+      })
+      return wine
+    }
+
+    it('returns nothing when no threshold is configured', async () => {
+      const store = new MockStore({ seed: false })
+      pushWineAndSale(store, 5)
+      const alerts = createMockAlertService(store, 0)
+      expect(await alerts.listSalesQualityAlerts()).toEqual([])
+    })
+
+    it('flags a sale below the configured minimum', async () => {
+      const store = new MockStore({ seed: false })
+      const wine = pushWineAndSale(store, 5)
+      const alerts = createMockAlertService(store, 0)
+      await alerts.setSalesAlertThreshold({ minVolumeMl: 20, maxVolumeMl: null })
+
+      const result = await alerts.listSalesQualityAlerts()
+      expect(result).toHaveLength(1)
+      expect(result[0]).toMatchObject({ wine, reason: 'below_minimum' })
+    })
+
+    it('flags a sale above the configured maximum', async () => {
+      const store = new MockStore({ seed: false })
+      const wine = pushWineAndSale(store, 5000)
+      const alerts = createMockAlertService(store, 0)
+      await alerts.setSalesAlertThreshold({ minVolumeMl: null, maxVolumeMl: 1500 })
+
+      const result = await alerts.listSalesQualityAlerts()
+      expect(result).toHaveLength(1)
+      expect(result[0]).toMatchObject({ wine, reason: 'above_maximum' })
+    })
+
+    it('does not flag a sale within range', async () => {
+      const store = new MockStore({ seed: false })
+      pushWineAndSale(store, 150)
+      const alerts = createMockAlertService(store, 0)
+      await alerts.setSalesAlertThreshold({ minVolumeMl: 20, maxVolumeMl: 1500 })
+      expect(await alerts.listSalesQualityAlerts()).toEqual([])
+    })
+
+    it('setSalesAlertThreshold rejects a negative bound or min greater than max', async () => {
+      const store = new MockStore({ seed: false })
+      const alerts = createMockAlertService(store, 0)
+      await expect(alerts.setSalesAlertThreshold({ minVolumeMl: -1, maxVolumeMl: null })).rejects.toThrow(
+        /non-negative/i,
+      )
+      await expect(alerts.setSalesAlertThreshold({ minVolumeMl: 100, maxVolumeMl: 50 })).rejects.toThrow(
+        /greater than/i,
+      )
+    })
+  })
 })

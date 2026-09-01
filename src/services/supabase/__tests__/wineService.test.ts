@@ -111,10 +111,14 @@ describe('supabase wine service', () => {
     await expect(wines.delete('w1')).rejects.toThrow(/invoice history/i)
   })
 
-  it('getBalances aggregates approved-invoice quantities per wine', async () => {
+  it('getBalances aggregates approved-invoice quantities minus sold volume per wine', async () => {
     const from = vi
       .fn()
-      .mockReturnValueOnce(fakeQueryBuilder({ data: [ROW, { ...ROW, id: 'w2', name: 'Other Wine' }] }))
+      .mockReturnValueOnce(
+        fakeQueryBuilder({
+          data: [{ ...ROW, volume_ml: 750 }, { ...ROW, id: 'w2', name: 'Other Wine', volume_ml: null }],
+        }),
+      )
       .mockReturnValueOnce(
         fakeQueryBuilder({
           data: [
@@ -124,10 +128,11 @@ describe('supabase wine service', () => {
           ],
         }),
       )
+      .mockReturnValueOnce(fakeQueryBuilder({ data: [{ wine_id: 'w1', volume_ml: 750, quantity: 1 }] }))
     const wines = createSupabaseWineService(supabaseWith(from))
     const balances = await wines.getBalances()
     expect(balances).toEqual([
-      { wine: expect.objectContaining({ id: 'w1' }), balanceInBottles: 10 },
+      { wine: expect.objectContaining({ id: 'w1' }), balanceInBottles: 9 },
       { wine: expect.objectContaining({ id: 'w2' }), balanceInBottles: 12 },
     ])
   })

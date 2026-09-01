@@ -5,6 +5,7 @@ import { useReassessAlerts } from '../hooks/useAlerts'
 const ALERTS_TABS = [
   { to: '/alerts/inventory', label: 'Inventory' },
   { to: '/alerts/data-quality', label: 'Data Quality' },
+  { to: '/alerts/sales-quality', label: 'Sales Quality' },
 ]
 
 /** Parent layout for every Alerts page - one heading with a Reassess action shared by both alert types, tabs to switch between them, the active one rendered via Outlet. */

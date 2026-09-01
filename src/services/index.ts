@@ -25,6 +25,8 @@ export type {
   ListOptions,
   OpenAiExtractedLine,
   OpenAiService,
+  PourSizeService,
+  SaleService,
   Services,
   VendorService,
   WineListOptions,

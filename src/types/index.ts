@@ -84,6 +84,7 @@ export interface Invoice {
 
 export interface WineBalance {
   wine: Wine
+  /** purchased (approved invoices) minus sold-bottle-equivalent (Σ sale volume_ml * quantity / wine.volumeMl). Can be fractional, and can be negative if oversold. */
   balanceInBottles: number
 }
 
@@ -123,6 +124,59 @@ export type DataQualityField = 'country' | 'volumeMl' | 'category'
 export interface DataQualityAlert {
   wine: Wine
   field: DataQualityField
+}
+
+/**
+ * Global, shared across every wine for now - "glass" and "taste" mean the
+ * same ml regardless of which wine is poured. Revisit if some wines
+ * genuinely need their own pour sizes later.
+ */
+export interface PourSize {
+  id: string
+  name: string
+  volumeMl: number
+  active: boolean
+  createdAt: string
+}
+
+export type SaleSource = 'manual' | 'pos'
+
+/**
+ * One recorded sale, in canonical milliliters regardless of how it was
+ * entered (a pour size, a full bottle, or a raw ml override) - so ending
+ * balance math never has to branch on unit. `source` distinguishes manual
+ * demo entries from a future real POS feed once that exists.
+ *
+ * `volumeMl` is the per-unit volume (one glass, one bottle, one custom pour);
+ * `quantity` is how many of that unit were sold in this one record - e.g.
+ * "3 glasses" is a single WineSale with volumeMl: 150, quantity: 3, not three
+ * separate rows. Total volume sold by this record is volumeMl * quantity.
+ */
+export interface WineSale {
+  id: string
+  wineId: string
+  /** Null when volumeMl was entered directly (full bottle or custom ml) rather than via a named pour size. */
+  pourSizeId: string | null
+  volumeMl: number
+  quantity: number
+  soldAt: string
+  source: SaleSource
+  createdAt: string
+}
+
+/** Single global config, not per-wine - flags any sale whose volume falls outside these bounds. Null bound = unbounded on that side. */
+export interface SalesAlertThreshold {
+  minVolumeMl: number | null
+  maxVolumeMl: number | null
+}
+
+export type SalesQualityReason = 'below_minimum' | 'above_maximum'
+
+/** One sale flagged by the configured min/max volume threshold. */
+export interface SalesQualityAlert {
+  sale: WineSale
+  wine: Wine
+  reason: SalesQualityReason
 }
 
 export interface OpenAiUsage {
