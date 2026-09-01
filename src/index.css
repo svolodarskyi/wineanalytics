@@ -593,6 +593,34 @@ table {
   flex-wrap: wrap;
 }
 
+.picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+}
+
+.picker-list__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  border-radius: 5px;
+  color: var(--text-h);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.picker-list__item:hover {
+  background: var(--bg-subtle);
+}
+
 .invoice-doc-preview {
   max-width: 100%;
   max-height: 480px;

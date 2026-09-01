@@ -136,7 +136,6 @@ export function InvoiceReviewPage() {
               <EntityPicker
                 items={vendors ?? []}
                 searchLabel="Search vendors"
-                submitLabel="Set vendor"
                 entityLabel="vendor"
                 onCreateNew={(name) => createVendor.mutateAsync({ name })}
                 onCancel={() => setActivePicker(null)}
@@ -253,7 +252,6 @@ function LineItemRow({
             <EntityPicker
               items={wines}
               searchLabel="Search wines"
-              submitLabel="Set wine"
               entityLabel="wine"
               onCreateNew={(name) => createWine.mutateAsync({ name })}
               onCancel={onClosePicker}

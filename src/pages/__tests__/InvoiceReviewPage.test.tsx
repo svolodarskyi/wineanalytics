@@ -68,8 +68,8 @@ describe('InvoiceReviewPage', () => {
 
     // Resolve the vendor via the picker (no AI suggestion exists in this scenario).
     await user.click(screen.getByRole('button', { name: /select vendor/i }))
-    await user.selectOptions(screen.getByLabelText('Choose match'), vendor.id)
-    await user.click(screen.getByRole('button', { name: /set vendor/i }))
+    await user.click(screen.getByLabelText('Search vendors'))
+    await user.click(screen.getByRole('button', { name: vendor.name }))
     await screen.findByText('Test Vendor')
     expect(screen.getAllByText('Resolved')[0]).toBeInTheDocument()
 
@@ -77,8 +77,8 @@ describe('InvoiceReviewPage', () => {
     const rows = screen.getAllByRole('row').filter((row) => within(row).queryByText(/select wine/i))
     for (const row of rows) {
       await user.click(within(row).getByRole('button', { name: /select wine/i }))
-      await user.selectOptions(within(row).getByLabelText('Choose match'), wine.id)
-      await user.click(within(row).getByRole('button', { name: /set wine/i }))
+      await user.click(within(row).getByLabelText('Search wines'))
+      await user.click(within(row).getByRole('button', { name: wine.name }))
     }
 
     await waitFor(() => expect(screen.getByRole('button', { name: /approve/i })).toBeEnabled())
@@ -104,6 +104,7 @@ describe('InvoiceReviewPage', () => {
 
     // No vendors exist at all yet, so the picker offers to create one.
     await user.click(await screen.findByRole('button', { name: /select vendor/i }))
+    await user.click(screen.getByLabelText('Search vendors'))
     expect(screen.getByText(/no vendors yet/i)).toBeInTheDocument()
     await user.type(screen.getByLabelText('Search vendors'), 'Brand New Vendor')
     await user.click(screen.getByRole('button', { name: /add "brand new vendor" as a new vendor/i }))
@@ -116,6 +117,7 @@ describe('InvoiceReviewPage', () => {
     // Same flow for a wine SKU on the first line item.
     const row = screen.getAllByRole('row').find((r) => within(r).queryByText(/select wine/i)) as HTMLElement
     await user.click(within(row).getByRole('button', { name: /select wine/i }))
+    await user.click(within(row).getByLabelText('Search wines'))
     expect(within(row).getByText(/no wines yet/i)).toBeInTheDocument()
     await user.type(within(row).getByLabelText('Search wines'), 'Brand New Wine')
     await user.click(within(row).getByRole('button', { name: /add "brand new wine" as a new wine/i }))
