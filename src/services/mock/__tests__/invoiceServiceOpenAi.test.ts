@@ -32,6 +32,7 @@ describe('mock invoice service - image uploads via OpenAI', () => {
         invoiceDate: '2026-01-01',
         totalAmount: 42,
         lines: [{ itemNameRaw: 'Test Wine', quantity: 2, unitPrice: 21, lineTotal: 42 }],
+        additionalCharges: [{ description: 'Sales Tax', amount: 3.5 }],
       }),
       listLogs: vi.fn().mockResolvedValue([]),
     }
@@ -47,6 +48,7 @@ describe('mock invoice service - image uploads via OpenAI', () => {
     expect(processed.extracted.totalAmount).toBe(42)
     expect(processed.lineItems).toHaveLength(1)
     expect(processed.lineItems[0].itemNameRaw).toBe('Test Wine')
+    expect(processed.extracted.additionalCharges).toEqual([{ description: 'Sales Tax', amount: 3.5 }])
   })
 
   it('leaves the invoice fully unresolved, not stuck, when extraction fails', async () => {

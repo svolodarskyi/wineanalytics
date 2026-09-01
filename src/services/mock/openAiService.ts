@@ -36,6 +36,7 @@ export function createOpenAiService(store: MockStore, latencyMs: number): OpenAi
             unitPrice: item.unitPrice,
             lineTotal: item.lineTotal,
           })),
+          additionalCharges: result.parsed.additionalCharges,
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'OpenAI request failed.'

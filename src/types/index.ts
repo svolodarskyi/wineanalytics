@@ -43,10 +43,17 @@ export interface InvoiceLineItem {
   skuMatch: SkuMatch
 }
 
+/** A charge on the invoice that isn't a wine/product line item - tax, deposits, GST, shipping, fees, etc. */
+export interface AdditionalCharge {
+  description: string
+  amount: number
+}
+
 export interface ExtractedInvoiceData {
   invoiceDate: string | null
   totalAmount: number | null
   vendorMatch: VendorMatch
+  additionalCharges: AdditionalCharge[]
 }
 
 export interface Invoice {

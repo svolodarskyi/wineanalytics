@@ -57,6 +57,7 @@ export function createMockInvoiceService(
               invoiceDate: null,
               totalAmount: 0,
               lines: [],
+              additionalCharges: [],
             })
           })
         return invoice

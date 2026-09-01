@@ -151,6 +151,22 @@ export function InvoiceReviewPage() {
               </tr>
             </tbody>
           </table>
+
+          {!!invoice.extracted.additionalCharges.length && (
+            <>
+              <h3>Additional items</h3>
+              <table className="data-table data-table--compact">
+                <tbody>
+                  {invoice.extracted.additionalCharges.map((charge, index) => (
+                    <tr key={index}>
+                      <th>{charge.description}</th>
+                      <td>{formatCurrency(charge.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
         </div>
       </div>
 

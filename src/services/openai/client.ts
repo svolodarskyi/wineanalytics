@@ -1,4 +1,4 @@
-import type { OpenAiUsage } from '../../types'
+import type { AdditionalCharge, OpenAiUsage } from '../../types'
 import { estimateCostUsd, OPENAI_MODEL } from './pricing'
 import { INVOICE_EXTRACTION_PROMPT } from './prompt'
 
@@ -14,6 +14,7 @@ export interface OpenAiExtractedInvoice {
   invoiceDate: string | null
   totalAmount: number
   lineItems: OpenAiExtractedLineItem[]
+  additionalCharges: AdditionalCharge[]
 }
 
 export interface OpenAiExtractionResult {
@@ -33,6 +34,7 @@ function toNumber(value: unknown): number {
 function coerceExtractedInvoice(value: unknown): OpenAiExtractedInvoice {
   const obj = (value ?? {}) as Record<string, unknown>
   const rawLineItems = Array.isArray(obj.lineItems) ? obj.lineItems : []
+  const rawAdditionalCharges = Array.isArray(obj.additionalCharges) ? obj.additionalCharges : []
   return {
     vendorName: typeof obj.vendorName === 'string' && obj.vendorName.trim() ? obj.vendorName : null,
     invoiceDate: typeof obj.invoiceDate === 'string' && obj.invoiceDate.trim() ? obj.invoiceDate : null,
@@ -44,6 +46,13 @@ function coerceExtractedInvoice(value: unknown): OpenAiExtractedInvoice {
         quantity: toNumber(line.quantity),
         unitPrice: toNumber(line.unitPrice),
         lineTotal: toNumber(line.lineTotal),
+      }
+    }),
+    additionalCharges: rawAdditionalCharges.map((charge) => {
+      const item = (charge ?? {}) as Record<string, unknown>
+      return {
+        description: typeof item.description === 'string' && item.description.trim() ? item.description : 'Other charge',
+        amount: toNumber(item.amount),
       }
     }),
   }

@@ -679,8 +679,13 @@ table {
 }
 
 .doc-modal-frame {
-  width: 100%;
-  height: 80svh;
+  /* Sized to a standard letter/A4 page ratio instead of stretching to a fixed
+     viewport-height rectangle, so it reads as a document, not a phone screen. */
+  width: min(100%, calc(80svh * 8.5 / 11));
+  aspect-ratio: 8.5 / 11;
+  max-height: 80svh;
+  display: block;
+  margin: 0 auto;
   border: none;
   border-radius: 8px;
 }

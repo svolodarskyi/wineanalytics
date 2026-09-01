@@ -1,4 +1,5 @@
 import type {
+  AdditionalCharge,
   AuthUser,
   Invoice,
   InvoiceStatus,
@@ -86,6 +87,7 @@ export interface OpenAiService {
     invoiceDate: string | null
     totalAmount: number
     lines: OpenAiExtractedLine[]
+    additionalCharges: AdditionalCharge[]
   }>
   listLogs(): Promise<OpenAiRequestLog[]>
 }

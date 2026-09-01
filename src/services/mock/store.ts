@@ -1,4 +1,4 @@
-import type { Invoice, InvoiceLineItem, OpenAiRequestLog, Vendor, VendorMatch, Wine } from '../../types'
+import type { AdditionalCharge, Invoice, InvoiceLineItem, OpenAiRequestLog, Vendor, VendorMatch, Wine } from '../../types'
 import { createId } from './ids'
 import { nextSampleInvoice } from './sampleInvoices'
 import { seedVendors, seedWines } from './seedData'
@@ -131,6 +131,7 @@ export class MockStore {
           confidence: null,
           status: 'unresolved',
         },
+        additionalCharges: [],
       },
       lineItems: sample.lines.map((line) => ({
         id: createId('line'),
@@ -179,6 +180,7 @@ export class MockStore {
         invoiceDate: null,
         totalAmount: null,
         vendorMatch: { vendorNameRaw: '', vendorId: null, confidence: null, status: 'unresolved' },
+        additionalCharges: [],
       },
       lineItems: [],
     }
@@ -194,6 +196,7 @@ export class MockStore {
       invoiceDate: string | null
       totalAmount: number
       lines: { itemNameRaw: string; quantity: number; unitPrice: number; lineTotal: number }[]
+      additionalCharges: AdditionalCharge[]
     },
   ): void {
     const invoice = this.findInvoice(invoiceId)
@@ -206,6 +209,7 @@ export class MockStore {
         invoiceDate: extraction.invoiceDate,
         totalAmount: extraction.totalAmount,
         vendorMatch: this.vendorMatchFor(extraction.vendorNameRaw),
+        additionalCharges: extraction.additionalCharges,
       },
       lineItems: extraction.lines.map((line) => ({
         id: createId('line'),

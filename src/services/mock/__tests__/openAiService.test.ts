@@ -15,6 +15,7 @@ describe('mock OpenAI service', () => {
         invoiceDate: '2026-02-01',
         totalAmount: 100,
         lineItems: [{ itemName: 'Wine A', quantity: 1, unitPrice: 100, lineTotal: 100 }],
+        additionalCharges: [{ description: 'Sales Tax', amount: 8.5 }],
       },
       responseJson: { id: 'resp_1' },
       usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
@@ -30,6 +31,7 @@ describe('mock OpenAI service', () => {
       invoiceDate: '2026-02-01',
       totalAmount: 100,
       lines: [{ itemNameRaw: 'Wine A', quantity: 1, unitPrice: 100, lineTotal: 100 }],
+      additionalCharges: [{ description: 'Sales Tax', amount: 8.5 }],
     })
 
     const logs = await openai.listLogs()
@@ -54,7 +56,7 @@ describe('mock OpenAI service', () => {
 
   it('keeps logs newest-first', async () => {
     vi.mocked(extractInvoiceImage).mockResolvedValue({
-      parsed: { vendorName: null, invoiceDate: null, totalAmount: 0, lineItems: [] },
+      parsed: { vendorName: null, invoiceDate: null, totalAmount: 0, lineItems: [], additionalCharges: [] },
       responseJson: {},
       usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
       costUsd: 0,
