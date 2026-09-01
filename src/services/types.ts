@@ -90,7 +90,7 @@ export interface OpenAiExtractedLine {
 
 export interface OpenAiService {
   /** Sends an image to OpenAI for invoice-field extraction, logging the request/response/cost for the Settings debug page. */
-  extractInvoice(input: { fileName: string; imageDataUrl: string }): Promise<{
+  extractInvoice(input: { fileName: string; imageDataUrl: string; invoiceId?: string }): Promise<{
     vendorNameRaw: string
     invoiceDate: string | null
     totalAmount: number

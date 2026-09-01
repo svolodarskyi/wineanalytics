@@ -12,7 +12,7 @@ import type { MockStore } from './store'
  */
 export function createOpenAiService(store: MockStore, latencyMs: number): OpenAiService {
   return {
-    async extractInvoice(input: { fileName: string; imageDataUrl: string }) {
+    async extractInvoice(input: { fileName: string; imageDataUrl: string; invoiceId?: string }) {
       try {
         const result = await extractInvoiceImage(input.imageDataUrl)
         store.addOpenAiLog({

@@ -35,6 +35,27 @@ export interface FakeStorageOptions {
   signError?: { message: string } | null
 }
 
+/**
+ * Routes supabase.from(table) calls to a per-table queue of canned results,
+ * shifted off in call order - lets a test control what each successive call
+ * to the same table returns (e.g. an insert, then a later update).
+ */
+export function routedSupabaseFrom(routes: Record<string, FakeQueryResult[]>) {
+  const queues = new Map(Object.entries(routes).map(([table, results]) => [table, [...results]]))
+  return vi.fn((table: string) => {
+    const queue = queues.get(table)
+    if (!queue || queue.length === 0) {
+      throw new Error(`routedSupabaseFrom: no more results queued for table "${table}"`)
+    }
+    return fakeQueryBuilder(queue.shift() as FakeQueryResult)
+  })
+}
+
+/** Waits for pending microtasks (e.g. a fire-and-forget .then()/.catch() chain) to run. */
+export function flushAsync(ms = 20): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 /** Minimal stand-in for supabase.storage.from(bucket), one fixed behavior for every bucket/path. */
 export function fakeStorage(options: FakeStorageOptions = {}) {
   const bucketApi = {

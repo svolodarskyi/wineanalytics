@@ -262,35 +262,63 @@ migrations) — not required to run the app itself:
    time-limited signed URL on every read (private bucket, per the decision
    above) — `src/services/supabase/storage.ts` holds that logic, shared
    with whatever `invoiceService.ts` needs for the `wine-invoices` bucket.
-7. `invoiceService.ts` — not started. The nested writes (invoice + line
-   items + additional charges across 3 tables) and wiring the async OpenAI
-   extraction call to update rows after upload make this a bigger unit than
-   wines/vendors; better as its own pass than folded in here.
-8. Port `src/services/mock/seedData.ts`'s six wines / three vendors into the
+7. ~~Implement `invoiceService.ts`~~ — done: list/get/upload/confirm+select
+   vendor+SKU matches/approve, tested (9 tests). `upload()` uploads the file
+   to `wine-invoices`, inserts the invoice row, and — for images only —
+   fires OpenAI extraction in the background (mirrors the mock's
+   fire-and-forget pattern); on success or failure it writes the resolved
+   vendor/SKU matches (reusing `findBestMatch`/`confidenceFromScore` from
+   `../mock/similarity.ts` directly - it was already backend-agnostic),
+   inserts line items and additional charges. PDFs skip extraction entirely
+   and land fully unresolved (no canned-sample fallback like the mock has -
+   that would be actively misleading against a real backend). `approve()`
+   bulk-confirms every `suggested` line item in one UPDATE instead of
+   looping. `wine_openai_logs` doesn't store the image again per §2 -
+   `openAiService.ts`'s `listLogs()` joins to the invoice's own file and
+   resolves it to a signed URL, same pattern as wine photos.
+8. ~~Wire `src/services/index.ts`~~ — done, but gated behind a second,
+   separate flag: `VITE_USE_SUPABASE="true"`. Credentials being present
+   (`isSupabaseConfigured`) only means Auth can be exercised in isolation
+   (see the demo-user note below) - it does not mean the schema exists.
+   Without that second flag set, the app keeps resolving to the mock even
+   with real credentials configured, so this commit doesn't silently break
+   the running app. Flip it once the migration (next item) is actually
+   applied.
+9. Port `src/services/mock/seedData.ts`'s six wines / three vendors into the
    real tables (a one-time seed script), so the app isn't empty on first
-   real run.
-9. Switch `src/services/index.ts` to the real implementation (waits on §7 -
-   `Services` needs every sub-interface implemented together).
+   real run. **Not done yet.**
 10. (Recommended, §7 above) Move OpenAI extraction into an Edge Function -
     skipped per the decision below, revisit if this changes.
 11. Manual smoke test of the full flow against the real backend: upload →
-    extract → match → approve → balance updates.
+    extract → match → approve → balance updates. **Blocked on the
+    migration below.**
 
-**Current blocker on step 2:** nothing in `.env` can execute DDL. The
-publishable key can't run `CREATE TABLE` (by design - it's RLS-scoped data
-access only), and the Management API (the only way to run SQL against a
-project we don't have a direct Postgres connection string for) needs a
-personal access token, which isn't a project-level credential and isn't
-in `.env`. To actually create the tables, either:
+**Demo user:** created via the Admin API (`sb_secret_...` key, run
+server-side only, never committed) - `demo@restaurant.com` / `password`,
+pre-confirmed. Verified end-to-end with a real `signInWithPassword` call
+using the publishable key. This works right now, independent of the schema
+migration below.
+
+**Still blocked: nothing available can execute DDL.** Tried three things
+against this project, all as expected:
+- Publishable key against the schema/RPC endpoints → rejected (by design,
+  RLS-scoped data access only).
+- The new-format secret key against the Supabase Management API → `401`,
+  `JWT could not be decoded` (Management API needs an account-level
+  personal access token, not a project key, regardless of key format).
+- The secret key as a Postgres password against the connection pooler →
+  `password authentication failed` (confirms the pooler host/port work, but
+  API keys and the database password are different credentials entirely).
+
+To actually create the tables, either:
 - Paste the migration file's contents into the Supabase dashboard's SQL
   Editor and run it there (fastest, no new credentials needed), or
-- Add `SUPABASE_SECRET_KEY` for this project to `.env` and a way to reach
-  Postgres directly (connection string, or a Supabase personal access
-  token) so this can be scripted.
+- Give me the actual database password (Project Settings → Database →
+  Connection string / "Reset database password") so I can run it directly.
 
 Existing mock-backed tests (68 of them) keep running unchanged throughout —
 they test against `MockStore`, not Supabase, so this migration doesn't put
-them at risk. The 23 new Supabase-service tests mock the client entirely
+them at risk. The 32 new Supabase-service tests mock the client entirely
 (no network calls), so they run in CI same as everything else and don't
 depend on the migration having been applied anywhere.
 

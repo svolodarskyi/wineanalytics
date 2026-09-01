@@ -46,7 +46,7 @@ export function createMockInvoiceService(
       if (input.fileType === 'image') {
         const invoice = store.createEmptyProcessingInvoice(input)
         openai
-          .extractInvoice({ fileName: input.fileName, imageDataUrl: input.fileDataUrl })
+          .extractInvoice({ fileName: input.fileName, imageDataUrl: input.fileDataUrl, invoiceId: invoice.id })
           .then((extraction) => store.completeProcessingFromExtraction(invoice.id, extraction))
           .catch(() => {
             // Failure is already captured in the OpenAI request log (see
