@@ -2,6 +2,9 @@ export interface SampleInvoiceLine {
   itemNameRaw: string
   quantity: number
   unitPrice: number
+  /** What real OCR would typically also pull off the line - left unset on most lines to also exercise the "nothing to review" path. */
+  volumeMlRaw?: number | null
+  categoryRaw?: 'red' | 'white' | 'rose' | 'sparkling' | 'dessert' | 'fortified' | 'other' | null
 }
 
 export interface SampleInvoice {
@@ -21,7 +24,7 @@ export const SAMPLE_INVOICES: SampleInvoice[] = [
     vendorNameRaw: 'Winebow Imports',
     daysAgo: 3,
     lines: [
-      { itemNameRaw: 'Caymus Cabernet Sauvignon', quantity: 6, unitPrice: 42 },
+      { itemNameRaw: 'Caymus Cabernet Sauvignon', quantity: 6, unitPrice: 42, volumeMlRaw: 750, categoryRaw: 'red' },
       { itemNameRaw: 'Kim Crawford Sauv Blanc', quantity: 12, unitPrice: 14.5 },
       { itemNameRaw: 'Chandon Brut Rose', quantity: 6, unitPrice: 18 },
     ],
@@ -39,7 +42,7 @@ export const SAMPLE_INVOICES: SampleInvoice[] = [
     vendorNameRaw: 'Vintner Select Distributors',
     daysAgo: 17,
     lines: [
-      { itemNameRaw: 'Antinori Tignanello', quantity: 2, unitPrice: 120 },
+      { itemNameRaw: 'Antinori Tignanello', quantity: 2, unitPrice: 120, volumeMlRaw: 750, categoryRaw: 'red' },
       { itemNameRaw: 'Domaine Serene Pinot Noir', quantity: 4, unitPrice: 65 },
       { itemNameRaw: 'Kim Crawford Sauvignon Blanc', quantity: 12, unitPrice: 14 },
     ],

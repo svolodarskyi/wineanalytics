@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 interface EntityPickerProps {
   items: { id: string; name: string }[]
@@ -6,10 +6,18 @@ interface EntityPickerProps {
   searchLabel: string
   /** Singular noun used in create-new copy, e.g. "vendor" or "wine". */
   entityLabel: string
-  /** Creates a brand-new entity with this name. Offered any time the user has typed a name, whether or not it also matches something on the list. */
+  /** Creates a brand-new entity with this name. Offered any time the user has typed a name, whether or not it also matches something on the list. Ignored if renderCreateReview is also given. */
   onCreateNew?: (name: string) => Promise<{ id: string }>
   /** Pre-fills the search box, e.g. with the raw name OCR extracted, so existing matches and the create-new option show immediately without retyping. */
   initialQuery?: string
+  /**
+   * Alternative to onCreateNew's one-click create: clicking "+ Add new"
+   * reveals this panel instead of creating immediately, so the caller can
+   * have the user review/approve prefilled fields (e.g. an OCR-extracted
+   * volume) first. The caller owns creation and must call onSelect() itself
+   * once the user confirms - `cancel` returns to the plain create-new button.
+   */
+  renderCreateReview?: (name: string, cancel: () => void) => ReactNode
 }
 
 /**
@@ -17,7 +25,15 @@ interface EntityPickerProps {
  * a fallback to create a new entity at any time. Meant to be rendered inside
  * a centered Modal, so it only ever appears once the user opens it.
  */
-export function EntityPicker({ items, onSelect, searchLabel, entityLabel, onCreateNew, initialQuery }: EntityPickerProps) {
+export function EntityPicker({
+  items,
+  onSelect,
+  searchLabel,
+  entityLabel,
+  onCreateNew,
+  initialQuery,
+  renderCreateReview,
+}: EntityPickerProps) {
   const [query, setQuery] = useState(initialQuery ?? '')
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -26,6 +42,7 @@ export function EntityPicker({ items, onSelect, searchLabel, entityLabel, onCrea
 
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [isReviewingCreate, setIsReviewingCreate] = useState(false)
 
   const trimmedQuery = query.trim()
   const noMatches = filtered.length === 0
@@ -76,11 +93,20 @@ export function EntityPicker({ items, onSelect, searchLabel, entityLabel, onCrea
         </p>
       )}
 
-      {onCreateNew && trimmedQuery && (
+      {(onCreateNew || renderCreateReview) && trimmedQuery && (
         <div className="stack">
-          <button type="button" className="btn btn--small btn--primary" disabled={isCreating} onClick={handleCreateNew}>
-            {isCreating ? 'Creating...' : `+ Add "${trimmedQuery}" as a new ${entityLabel}`}
-          </button>
+          {isReviewingCreate && renderCreateReview ? (
+            renderCreateReview(trimmedQuery, () => setIsReviewingCreate(false))
+          ) : (
+            <button
+              type="button"
+              className="btn btn--small btn--primary"
+              disabled={isCreating}
+              onClick={() => (renderCreateReview ? setIsReviewingCreate(true) : handleCreateNew())}
+            >
+              {isCreating ? 'Creating...' : `+ Add "${trimmedQuery}" as a new ${entityLabel}`}
+            </button>
+          )}
           {createError && <p className="notice notice--error">{createError}</p>}
         </div>
       )}

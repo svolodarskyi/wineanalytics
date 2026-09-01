@@ -16,8 +16,9 @@ import {
 } from '../hooks/useInvoices'
 import { useCreateVendor, useVendors } from '../hooks/useVendors'
 import { useCreateWine, useWines } from '../hooks/useWines'
-import type { InvoiceLineItem } from '../types'
+import type { InvoiceLineItem, WineCategory } from '../types'
 import { formatCurrency, formatDate, formatVolumeMl } from '../utils/format'
+import { VOLUME_ML_PRESETS, WINE_CATEGORY_OPTIONS } from '../utils/wineFormOptions'
 
 type ActivePicker = 'vendor' | { lineItemId: string } | null
 
@@ -360,8 +361,6 @@ function LineItemRow({
   onSelect: (wineId: string) => void
   isConfirmPending: boolean
 }) {
-  const createWine = useCreateWine()
-
   return (
     <tr>
       <td>{line.itemNameRaw}</td>
@@ -397,14 +396,9 @@ function LineItemRow({
                 searchLabel="Search wines"
                 entityLabel="wine"
                 initialQuery={line.itemNameRaw}
-                onCreateNew={(name) =>
-                  createWine.mutateAsync({
-                    name,
-                    invoiceName: name,
-                    volumeMl: line.volumeMlRaw,
-                    category: line.categoryRaw,
-                  })
-                }
+                renderCreateReview={(name, cancel) => (
+                  <NewWineReviewFields name={name} line={line} cancel={cancel} onCreated={onSelect} />
+                )}
                 onSelect={onSelect}
               />
             </Modal>
@@ -412,5 +406,147 @@ function LineItemRow({
         </div>
       </td>
     </tr>
+  )
+}
+
+/**
+ * Shown in place of EntityPicker's one-click create button when adding a
+ * wine SKU that doesn't exist yet. Volume and category are often
+ * OCR-extracted straight from the invoice, so a prefilled value must be
+ * explicitly approved (or cleared) before the wine can be created rather
+ * than silently accepted - OCR can misread either one. Country is never
+ * extracted here and is always optional. Anything left blank shows up
+ * under Alerts > Data Quality.
+ */
+function NewWineReviewFields({
+  name,
+  line,
+  onCreated,
+  cancel,
+}: {
+  name: string
+  line: InvoiceLineItem
+  onCreated: (wineId: string) => void
+  cancel: () => void
+}) {
+  const createWine = useCreateWine()
+  const [volumeInput, setVolumeInput] = useState(line.volumeMlRaw != null ? String(line.volumeMlRaw) : '')
+  const [volumeApproved, setVolumeApproved] = useState(line.volumeMlRaw == null)
+  const [category, setCategory] = useState<WineCategory | ''>(line.categoryRaw ?? '')
+  const [categoryApproved, setCategoryApproved] = useState(line.categoryRaw == null)
+  const [country, setCountry] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+
+  const volumeNeedsApproval = volumeInput.trim() !== '' && !volumeApproved
+  const categoryNeedsApproval = category !== '' && !categoryApproved
+  const needsApproval = volumeNeedsApproval || categoryNeedsApproval
+
+  async function handleCreate() {
+    setError(null)
+    setIsCreating(true)
+    try {
+      const wine = await createWine.mutateAsync({
+        name,
+        invoiceName: name,
+        volumeMl: volumeInput.trim() ? Number(volumeInput) : null,
+        category: category || null,
+        country: country.trim() || null,
+      })
+      onCreated(wine.id)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create the wine.')
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  return (
+    <div className="stack">
+      <p className="page-header__meta">New wine: {name}</p>
+
+      <datalist id="new-wine-volume-presets">
+        {VOLUME_ML_PRESETS.map((ml) => (
+          <option key={ml} value={ml} />
+        ))}
+      </datalist>
+
+      <div className="field">
+        <label htmlFor="new-wine-volume">Volume (ml)</label>
+        <div className="picker">
+          <input
+            id="new-wine-volume"
+            type="number"
+            min="1"
+            step="1"
+            list="new-wine-volume-presets"
+            value={volumeInput}
+            onChange={(event) => {
+              setVolumeInput(event.target.value)
+              setVolumeApproved(false)
+            }}
+            placeholder="Fill out later"
+          />
+          {volumeNeedsApproval && (
+            <button type="button" className="btn btn--small btn--primary" onClick={() => setVolumeApproved(true)}>
+              Approve
+            </button>
+          )}
+          {volumeInput.trim() !== '' && volumeApproved && <span className="badge badge--confirmed">Approved</span>}
+        </div>
+        {line.volumeMlRaw != null && <p className="match-row__raw">Extracted from invoice - review before saving.</p>}
+      </div>
+
+      <div className="field">
+        <label htmlFor="new-wine-category">Category</label>
+        <div className="picker">
+          <select
+            id="new-wine-category"
+            value={category}
+            onChange={(event) => {
+              setCategory(event.target.value as WineCategory | '')
+              setCategoryApproved(false)
+            }}
+          >
+            <option value="">Not set - fill out later</option>
+            {WINE_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {categoryNeedsApproval && (
+            <button type="button" className="btn btn--small btn--primary" onClick={() => setCategoryApproved(true)}>
+              Approve
+            </button>
+          )}
+          {category !== '' && categoryApproved && <span className="badge badge--confirmed">Approved</span>}
+        </div>
+        {line.categoryRaw != null && <p className="match-row__raw">Extracted from invoice - review before saving.</p>}
+      </div>
+
+      <div className="field">
+        <label htmlFor="new-wine-country">Country</label>
+        <input
+          id="new-wine-country"
+          value={country}
+          onChange={(event) => setCountry(event.target.value)}
+          placeholder="Fill out later"
+        />
+      </div>
+
+      <p className="page-header__meta">Country can be filled out later - missing fields show up under Alerts &gt; Data Quality.</p>
+
+      {error && <p className="notice notice--error">{error}</p>}
+
+      <div className="picker" style={{ justifyContent: 'flex-end' }}>
+        <button type="button" className="btn" onClick={cancel}>
+          Cancel
+        </button>
+        <button type="button" className="btn btn--primary" disabled={isCreating || needsApproval} onClick={handleCreate}>
+          {isCreating ? 'Creating...' : 'Create wine'}
+        </button>
+      </div>
+    </div>
   )
 }

@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { resetSampleInvoiceCursor } from '../../services/mock/sampleInvoices'
+import { nextSampleInvoice, resetSampleInvoiceCursor } from '../../services/mock/sampleInvoices'
 import { resetTestServices, testServicesState } from '../../test/mockServices'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import { InvoiceReviewPage } from '../InvoiceReviewPage'
@@ -119,17 +119,113 @@ describe('InvoiceReviewPage', () => {
     const createdVendor = (await testServicesState.current.vendors.list()).find((v) => v.name === 'Brand New Vendor')
     expect(createdVendor).toBeDefined()
 
-    // Same flow for a wine SKU on the first line item.
+    // Same flow for a wine SKU on the first line item - creating a wine goes
+    // through a review step first (see NewWineReviewFields) rather than
+    // creating immediately, so there's an extra "Create wine" confirmation.
     const row = screen.getAllByRole('row').find((r) => within(r).queryByText(/select wine/i)) as HTMLElement
     await user.click(within(row).getByRole('button', { name: /select wine/i }))
     expect(within(row).getByText(/no wine found matching/i)).toBeInTheDocument()
     await user.clear(within(row).getByLabelText('Search wines'))
     await user.type(within(row).getByLabelText('Search wines'), 'Brand New Wine')
     await user.click(within(row).getByRole('button', { name: /add "brand new wine" as a new wine/i }))
+    // If this line item's raw data included a volume/category, Create stays disabled until each is approved.
+    for (const approveButton of within(row).queryAllByRole('button', { name: /^approve$/i })) {
+      await user.click(approveButton)
+    }
+    await user.click(within(row).getByRole('button', { name: /create wine/i }))
     await within(row).findByText('Brand New Wine')
 
     const createdWine = (await testServicesState.current.wines.list()).find((w) => w.name === 'Brand New Wine')
     expect(createdWine).toBeDefined()
+  })
+
+  it('blocks creating a new wine until both a prefilled volume and category are approved', async () => {
+    const user = userEvent.setup()
+    resetTestServices({ seed: false })
+    resetSampleInvoiceCursor()
+    // The first sample invoice's first line ("Caymus Cabernet Sauvignon") carries a raw volume + category.
+    const invoice = await uploadAndWaitForProcessing()
+
+    renderWithProviders(<InvoiceReviewPage />, {
+      route: `/invoices/${invoice.id}`,
+      path: '/invoices/:invoiceId',
+    })
+
+    await screen.findByText('Wine line items')
+    const row = screen.getAllByRole('row').find((r) => within(r).queryByText(/select wine/i)) as HTMLElement
+    await user.click(within(row).getByRole('button', { name: /select wine/i }))
+    await user.click(within(row).getByRole('button', { name: /add ".*" as a new wine/i }))
+
+    const createButton = within(row).getByRole('button', { name: /create wine/i })
+    expect(within(row).getByLabelText(/volume/i)).toHaveValue(750)
+    expect(within(row).getByLabelText(/category/i)).toHaveValue('red')
+    expect(createButton).toBeDisabled()
+
+    // Editing the prefilled volume re-requires approval rather than silently accepting the edit.
+    const volumeInput = within(row).getByLabelText(/volume/i)
+    await user.clear(volumeInput)
+    await user.type(volumeInput, '750')
+    expect(createButton).toBeDisabled()
+
+    const approveButtons = within(row).getAllByRole('button', { name: /^approve$/i })
+    expect(approveButtons).toHaveLength(2) // one for volume, one for category
+
+    await user.click(approveButtons[0])
+    expect(createButton).toBeDisabled() // category still unapproved
+    await user.click(within(row).getByRole('button', { name: /^approve$/i })) // only the category one remains
+    expect(createButton).toBeEnabled()
+
+    // Country stays optional even though volume/category needed approval.
+    await user.click(createButton)
+    await waitFor(() => expect(within(row).getByText('Resolved')).toBeInTheDocument())
+
+    const created = (await testServicesState.current.wines.list()).find((w) => w.name === 'Caymus Cabernet Sauvignon')
+    expect(created).toMatchObject({ volumeMl: 750, category: 'red', country: null })
+  })
+
+  it('lets category be cleared instead of approved, with no gate once it is empty', async () => {
+    const user = userEvent.setup()
+    resetTestServices({ seed: false })
+    resetSampleInvoiceCursor()
+    const invoice = await uploadAndWaitForProcessing()
+
+    renderWithProviders(<InvoiceReviewPage />, {
+      route: `/invoices/${invoice.id}`,
+      path: '/invoices/:invoiceId',
+    })
+
+    await screen.findByText('Wine line items')
+    const row = screen.getAllByRole('row').find((r) => within(r).queryByText(/select wine/i)) as HTMLElement
+    await user.click(within(row).getByRole('button', { name: /select wine/i }))
+    await user.click(within(row).getByRole('button', { name: /add ".*" as a new wine/i }))
+
+    await user.selectOptions(within(row).getByLabelText(/category/i), '')
+    await user.click(within(row).getByRole('button', { name: /^approve$/i })) // the volume one - now the only one left
+    expect(within(row).queryByRole('button', { name: /^approve$/i })).not.toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: /create wine/i })).toBeEnabled()
+  })
+
+  it('lets a new wine be created immediately when nothing was extracted to review', async () => {
+    const user = userEvent.setup()
+    resetTestServices({ seed: false })
+    resetSampleInvoiceCursor()
+    nextSampleInvoice() // skip past the first sample invoice, whose first line has a raw volume/category
+    const invoice = await uploadAndWaitForProcessing()
+
+    renderWithProviders(<InvoiceReviewPage />, {
+      route: `/invoices/${invoice.id}`,
+      path: '/invoices/:invoiceId',
+    })
+
+    await screen.findByText('Wine line items')
+    const row = screen.getAllByRole('row').find((r) => within(r).queryByText(/select wine/i)) as HTMLElement
+    await user.click(within(row).getByRole('button', { name: /select wine/i }))
+    await user.clear(within(row).getByLabelText('Search wines'))
+    await user.type(within(row).getByLabelText('Search wines'), 'No Extraction Wine')
+    await user.click(within(row).getByRole('button', { name: /add "no extraction wine" as a new wine/i }))
+
+    expect(within(row).queryByRole('button', { name: /^approve$/i })).not.toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: /create wine/i })).toBeEnabled()
   })
 
   it('pre-fills the picker search with the raw extracted name, so create-new is offered without typing', async () => {

@@ -198,8 +198,8 @@ export class MockStore {
       lineItems: sample.lines.map((line) => ({
         id: createId('line'),
         itemNameRaw: line.itemNameRaw,
-        volumeMlRaw: null,
-        categoryRaw: null,
+        volumeMlRaw: line.volumeMlRaw ?? null,
+        categoryRaw: line.categoryRaw ?? null,
         quantity: line.quantity,
         unitPrice: line.unitPrice,
         lineTotal: line.quantity * line.unitPrice,

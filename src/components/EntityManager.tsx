@@ -1,20 +1,9 @@
 import { useEffect, useRef, useState, type ChangeEvent, type SubmitEvent } from 'react'
 import type { WineCategory } from '../types'
 import { readFileAsDataUrl } from '../utils/readFileAsDataUrl'
+import { VOLUME_ML_PRESETS, WINE_CATEGORY_OPTIONS } from '../utils/wineFormOptions'
 import { ActiveStatusDot } from './ActiveStatusDot'
 import { Modal } from './Modal'
-
-const WINE_CATEGORY_OPTIONS: { value: WineCategory; label: string }[] = [
-  { value: 'red', label: 'Red' },
-  { value: 'white', label: 'White' },
-  { value: 'rose', label: 'Rosé' },
-  { value: 'sparkling', label: 'Sparkling' },
-  { value: 'dessert', label: 'Dessert' },
-  { value: 'fortified', label: 'Fortified' },
-  { value: 'other', label: 'Other' },
-]
-
-const VOLUME_ML_PRESETS = [187, 375, 500, 750, 1000, 1500, 3000]
 
 interface Entity {
   id: string
