@@ -593,34 +593,15 @@ table {
   flex-wrap: wrap;
 }
 
-.picker-wrap {
-  position: relative;
-}
-
-.picker-dropdown {
-  position: absolute;
-  z-index: 20;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
-}
-
-.picker-dropdown__empty {
-  padding: 10px 12px;
-}
-
-.picker-dropdown__create {
-  padding: 6px;
-  border-top: 1px solid var(--border);
-}
-
 .picker-list {
   list-style: none;
   margin: 0;
   padding: 4px;
-  max-height: 200px;
+  max-height: 260px;
   overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
 }
 
 .picker-list__item {

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ConfidenceBadge } from '../components/ConfidenceBadge'
 import { EntityPicker } from '../components/EntityPicker'
+import { Modal } from '../components/Modal'
 import { InvoiceStatusBadge } from '../components/StatusBadge'
 import {
   useApproveInvoice,
@@ -132,34 +133,34 @@ export function InvoiceReviewPage() {
                 <span className="badge badge--confirmed">Resolved</span>
               )}
             </div>
-            {activePicker === 'vendor' ? (
-              <EntityPicker
-                items={vendors ?? []}
-                searchLabel="Search vendors"
-                entityLabel="vendor"
-                onCreateNew={(name) => createVendor.mutateAsync({ name })}
-                onCancel={() => setActivePicker(null)}
-                onSelect={(vendorId) => {
-                  if (!invoiceId) return
-                  selectVendorMatch.mutate({ invoiceId, vendorId }, { onSuccess: () => setActivePicker(null) })
-                }}
-              />
-            ) : (
-              <div className="picker">
-                {vendorMatch.status === 'suggested' && (
-                  <button
-                    type="button"
-                    className="btn btn--small btn--primary"
-                    disabled={confirmVendorMatch.isPending}
-                    onClick={() => invoiceId && confirmVendorMatch.mutate(invoiceId)}
-                  >
-                    Confirm
-                  </button>
-                )}
-                <button type="button" className="btn btn--small" onClick={() => setActivePicker('vendor')}>
-                  {vendorMatch.vendorId ? 'Change' : 'Select vendor'}
+            <div className="picker">
+              {vendorMatch.status === 'suggested' && (
+                <button
+                  type="button"
+                  className="btn btn--small btn--primary"
+                  disabled={confirmVendorMatch.isPending}
+                  onClick={() => invoiceId && confirmVendorMatch.mutate(invoiceId)}
+                >
+                  Confirm
                 </button>
-              </div>
+              )}
+              <button type="button" className="btn btn--small" onClick={() => setActivePicker('vendor')}>
+                {vendorMatch.vendorId ? 'Change' : 'Select vendor'}
+              </button>
+            </div>
+            {activePicker === 'vendor' && (
+              <Modal title="Select vendor" onClose={() => setActivePicker(null)}>
+                <EntityPicker
+                  items={vendors ?? []}
+                  searchLabel="Search vendors"
+                  entityLabel="vendor"
+                  onCreateNew={(name) => createVendor.mutateAsync({ name })}
+                  onSelect={(vendorId) => {
+                    if (!invoiceId) return
+                    selectVendorMatch.mutate({ invoiceId, vendorId }, { onSuccess: () => setActivePicker(null) })
+                  }}
+                />
+              </Modal>
             )}
           </div>
         )}
@@ -248,26 +249,26 @@ function LineItemRow({
               <span className="badge badge--confirmed">Resolved</span>
             )}
           </div>
-          {isPickerOpen ? (
-            <EntityPicker
-              items={wines}
-              searchLabel="Search wines"
-              entityLabel="wine"
-              onCreateNew={(name) => createWine.mutateAsync({ name })}
-              onCancel={onClosePicker}
-              onSelect={onSelect}
-            />
-          ) : (
-            <div className="picker">
-              {line.skuMatch.status === 'suggested' && (
-                <button type="button" className="btn btn--small btn--primary" disabled={isConfirmPending} onClick={onConfirm}>
-                  Confirm
-                </button>
-              )}
-              <button type="button" className="btn btn--small" onClick={onOpenPicker}>
-                {line.skuMatch.wineId ? 'Change' : 'Select wine'}
+          <div className="picker">
+            {line.skuMatch.status === 'suggested' && (
+              <button type="button" className="btn btn--small btn--primary" disabled={isConfirmPending} onClick={onConfirm}>
+                Confirm
               </button>
-            </div>
+            )}
+            <button type="button" className="btn btn--small" onClick={onOpenPicker}>
+              {line.skuMatch.wineId ? 'Change' : 'Select wine'}
+            </button>
+          </div>
+          {isPickerOpen && (
+            <Modal title="Select wine" onClose={onClosePicker}>
+              <EntityPicker
+                items={wines}
+                searchLabel="Search wines"
+                entityLabel="wine"
+                onCreateNew={(name) => createWine.mutateAsync({ name })}
+                onSelect={onSelect}
+              />
+            </Modal>
           )}
         </div>
       </td>
