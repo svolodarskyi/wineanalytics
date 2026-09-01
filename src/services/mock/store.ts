@@ -1,4 +1,13 @@
-import type { AdditionalCharge, Invoice, InvoiceLineItem, OpenAiRequestLog, Vendor, VendorMatch, Wine } from '../../types'
+import type {
+  AdditionalCharge,
+  Invoice,
+  InvoiceLineItem,
+  OpenAiRequestLog,
+  Vendor,
+  VendorMatch,
+  Wine,
+  WineAlertThreshold,
+} from '../../types'
 import { createId } from './ids'
 import { nextSampleInvoice } from './sampleInvoices'
 import { seedVendors, seedWines } from './seedData'
@@ -18,6 +27,7 @@ export class MockStore {
   vendors: Vendor[]
   invoices: Invoice[] = []
   openAiLogs: OpenAiRequestLog[] = []
+  alertThresholds: WineAlertThreshold[] = []
 
   constructor(options: MockStoreOptions = {}) {
     const seed = options.seed ?? true
@@ -235,5 +245,40 @@ export class MockStore {
 
   addOpenAiLog(entry: OpenAiRequestLog): void {
     this.openAiLogs = [entry, ...this.openAiLogs]
+  }
+
+  /** Total quantity across every approved invoice line item matched to this wine. Shared by wineService.getBalances() and alertService.listInventoryAlerts(). */
+  balanceInBottles(wineId: string): number {
+    return this.invoices
+      .filter((invoice) => invoice.status === 'approved')
+      .flatMap((invoice) => invoice.lineItems)
+      .filter((line) => line.skuMatch.wineId === wineId)
+      .reduce((sum, line) => sum + line.quantity, 0)
+  }
+
+  findThreshold(wineId: string): WineAlertThreshold | undefined {
+    return this.alertThresholds.find((threshold) => threshold.wineId === wineId)
+  }
+
+  /** Creates or updates the one threshold a wine can have. */
+  upsertThreshold(wineId: string, minBottles: number): WineAlertThreshold {
+    const index = this.alertThresholds.findIndex((threshold) => threshold.wineId === wineId)
+    if (index !== -1) {
+      const updated: WineAlertThreshold = { ...this.alertThresholds[index], minBottles }
+      this.alertThresholds = this.alertThresholds.map((threshold, i) => (i === index ? updated : threshold))
+      return updated
+    }
+    const created: WineAlertThreshold = {
+      id: createId('threshold'),
+      wineId,
+      minBottles,
+      createdAt: new Date().toISOString(),
+    }
+    this.alertThresholds = [...this.alertThresholds, created]
+    return created
+  }
+
+  deleteThreshold(wineId: string): void {
+    this.alertThresholds = this.alertThresholds.filter((threshold) => threshold.wineId !== wineId)
   }
 }

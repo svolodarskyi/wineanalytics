@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type SubmitEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type SubmitEvent } from 'react'
 import type { WineCategory } from '../types'
 import { readFileAsDataUrl } from '../utils/readFileAsDataUrl'
 import { Modal } from './Modal'
@@ -55,6 +55,12 @@ interface EntityManagerProps {
   showWineDetails?: boolean
   /** Shows a photo upload/thumbnail. Wines only. */
   showImage?: boolean
+  /** Opens this item's detail popup automatically once it appears in `items` - for deep links like "fix this wine" from Alerts. Fires at most once per id. */
+  autoOpenId?: string
+  /** Called right after `autoOpenId` triggers the popup, so the caller can clear it (e.g. from the URL) without re-triggering on the next render. */
+  onAutoOpened?: () => void
+  /** Called whenever the detail popup closes, however it closes (Close button, overlay/Escape, or a successful Save/Delete) - e.g. to navigate back to wherever a deep link came from. */
+  onDetailClosed?: () => void
 }
 
 function ImageField({
@@ -116,6 +122,9 @@ export function EntityManager({
   showCountry,
   showWineDetails,
   showImage,
+  autoOpenId,
+  onAutoOpened,
+  onDetailClosed,
 }: EntityManagerProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newName, setNewName] = useState('')
@@ -181,6 +190,21 @@ export function EntityManager({
     setDetailError(null)
   }
 
+  function closeDetail() {
+    setDetailItem(null)
+    onDetailClosed?.()
+  }
+
+  const autoOpenedIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!autoOpenId || autoOpenedIdRef.current === autoOpenId) return
+    const match = items.find((item) => item.id === autoOpenId)
+    if (!match) return
+    autoOpenedIdRef.current = autoOpenId
+    openDetail(match)
+    onAutoOpened?.()
+  }, [autoOpenId, items, onAutoOpened])
+
   async function handleSaveDetail() {
     if (!detailItem) return
     setDetailError(null)
@@ -194,7 +218,7 @@ export function EntityManager({
         category: detailCategory || null,
         imageDataUrl: detailImage,
       })
-      setDetailItem(null)
+      closeDetail()
     } catch (err) {
       setDetailError(err instanceof Error ? err.message : 'Could not save.')
     } finally {
@@ -220,7 +244,7 @@ export function EntityManager({
     setIsDeleting(true)
     try {
       await onDelete(detailItem.id)
-      setDetailItem(null)
+      closeDetail()
     } catch (err) {
       setDetailError(err instanceof Error ? err.message : 'Could not delete.')
     } finally {
@@ -322,7 +346,7 @@ export function EntityManager({
       )}
 
       {detailItem && (
-        <Modal title={detailItem.name} onClose={() => setDetailItem(null)}>
+        <Modal title={detailItem.name} onClose={closeDetail}>
           <div className="stack">
             <div className="field">
               <label htmlFor="detail-entity-name">Name</label>
@@ -407,7 +431,7 @@ export function EntityManager({
                 Delete
               </button>
               <div className="picker">
-                <button type="button" className="btn" onClick={() => setDetailItem(null)}>
+                <button type="button" className="btn" onClick={closeDetail}>
                   Close
                 </button>
                 <button

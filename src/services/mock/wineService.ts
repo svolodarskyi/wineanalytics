@@ -108,14 +108,7 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
       await delay(latencyMs)
       const balances: WineBalance[] = store.wines
         .filter((wine) => wine.active)
-        .map((wine) => {
-          const balanceInBottles = store.invoices
-            .filter((invoice) => invoice.status === 'approved')
-            .flatMap((invoice) => invoice.lineItems)
-            .filter((line) => line.skuMatch.wineId === wine.id)
-            .reduce((sum, line) => sum + line.quantity, 0)
-          return { wine, balanceInBottles }
-        })
+        .map((wine) => ({ wine, balanceInBottles: store.balanceInBottles(wine.id) }))
       return balances.sort((a, b) => compareWines(a.wine, b.wine))
     },
 

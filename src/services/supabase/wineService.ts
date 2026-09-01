@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PurchaseHistoryEntry, Wine, WineBalance } from '../../types'
 import type { WineListOptions, WineService } from '../types'
+import { fetchBalanceByWineId } from './balances'
 import { resolveSignedUrl, uploadDataUrl } from './storage'
 
 const PHOTOS_BUCKET = 'wine-photos'
@@ -192,17 +193,7 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
         .order('name', { ascending: true })
       throwIfError(winesError)
 
-      const { data: lineRows, error: linesError } = await supabase
-        .from('wine_invoice_line_items')
-        .select('wine_id, quantity, wine_invoices!inner(status)')
-        .eq('wine_invoices.status', 'approved')
-      throwIfError(linesError)
-
-      const balanceByWineId = new Map<string, number>()
-      for (const line of (lineRows ?? []) as { wine_id: string | null; quantity: number }[]) {
-        if (!line.wine_id) continue
-        balanceByWineId.set(line.wine_id, (balanceByWineId.get(line.wine_id) ?? 0) + Number(line.quantity))
-      }
+      const balanceByWineId = await fetchBalanceByWineId(supabase)
 
       const wines = await Promise.all((wineRows as WineRow[]).map((row) => toWine(supabase, row)))
       return wines.map((wine) => ({ wine, balanceInBottles: balanceByWineId.get(wine.id) ?? 0 }))

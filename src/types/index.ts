@@ -101,6 +101,30 @@ export interface AuthUser {
   email: string
 }
 
+/** A configured "alert me when this wine's balance falls below N bottles" rule. One per wine at most. */
+export interface WineAlertThreshold {
+  id: string
+  wineId: string
+  minBottles: number
+  createdAt: string
+}
+
+/** A wine whose current balance has fallen below its configured threshold. */
+export interface InventoryAlert {
+  wine: Wine
+  balanceInBottles: number
+  minBottles: number
+}
+
+/** Wine fields checked for completeness - see src/utils/dataQuality.ts for the tracked-fields list. */
+export type DataQualityField = 'country' | 'volumeMl' | 'category'
+
+/** One missing field on one wine - each gets its own alert row, not grouped by wine. */
+export interface DataQualityAlert {
+  wine: Wine
+  field: DataQualityField
+}
+
 export interface OpenAiUsage {
   promptTokens: number
   completionTokens: number

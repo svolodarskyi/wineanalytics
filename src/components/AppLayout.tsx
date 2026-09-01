@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/AuthContext'
 const NAV_LINKS = [
   { to: '/', label: 'Wine Inventory', end: true },
   { to: '/invoices', label: 'Invoices', end: false },
+  { to: '/alerts', label: 'Alerts', end: false },
   { to: '/settings', label: 'Settings', end: false },
 ]
 
@@ -59,7 +60,7 @@ export function AppLayout() {
           )}
         </div>
       </nav>
-      <main className="app-main">
+      <main className={`app-main${location.pathname.startsWith('/alerts') ? ' app-main--full-width' : ''}`}>
         <Outlet />
       </main>
     </div>

@@ -14,4 +14,8 @@ export const queryKeys = {
   invoice: (id: string) => ['invoices', id] as const,
 
   openAiLogs: () => ['openai', 'logs'] as const,
+
+  inventoryAlerts: () => ['alerts', 'inventory'] as const,
+  dataQualityAlerts: () => ['alerts', 'data-quality'] as const,
+  alertThresholds: () => ['alerts', 'thresholds'] as const,
 }

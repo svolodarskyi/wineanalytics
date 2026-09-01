@@ -18,6 +18,7 @@ export function fakeQueryBuilder(result: FakeQueryResult) {
     select: vi.fn(() => builder),
     insert: vi.fn(() => builder),
     update: vi.fn(() => builder),
+    upsert: vi.fn(() => builder),
     delete: vi.fn(() => builder),
     eq: vi.fn(() => builder),
     ilike: vi.fn(() => builder),

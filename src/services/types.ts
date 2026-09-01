@@ -1,12 +1,15 @@
 import type {
   AdditionalCharge,
   AuthUser,
+  DataQualityAlert,
   Invoice,
+  InventoryAlert,
   InvoiceStatus,
   OpenAiRequestLog,
   PurchaseHistoryEntry,
   Vendor,
   Wine,
+  WineAlertThreshold,
   WineBalance,
   WineCategory,
 } from '../types'
@@ -93,6 +96,17 @@ export interface AuthService {
   logout(): Promise<void>
 }
 
+export interface AlertService {
+  /** Wines whose current balance has fallen below their configured threshold. */
+  listInventoryAlerts(): Promise<InventoryAlert[]>
+  /** One entry per (wine, missing field) - see src/utils/dataQuality.ts for the tracked-fields list. */
+  listDataQualityAlerts(): Promise<DataQualityAlert[]>
+  listThresholds(): Promise<WineAlertThreshold[]>
+  /** Creates or updates the one threshold a wine can have. */
+  setThreshold(wineId: string, minBottles: number): Promise<WineAlertThreshold>
+  deleteThreshold(wineId: string): Promise<void>
+}
+
 export interface OpenAiExtractedLine {
   itemNameRaw: string
   volumeMlRaw: number | null
@@ -120,4 +134,5 @@ export interface Services {
   vendors: VendorService
   invoices: InvoiceService
   openai: OpenAiService
+  alerts: AlertService
 }

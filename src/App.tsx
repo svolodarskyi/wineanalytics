@@ -1,6 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/AppLayout'
 import { RequireAuth } from './components/RequireAuth'
+import { AlertsDataQualityPage } from './pages/AlertsDataQualityPage'
+import { AlertsInventoryPage } from './pages/AlertsInventoryPage'
+import { AlertsPage } from './pages/AlertsPage'
 import { InvoiceReviewPage } from './pages/InvoiceReviewPage'
 import { InvoicesPage } from './pages/InvoicesPage'
 import { LoginPage } from './pages/LoginPage'
@@ -27,6 +30,11 @@ export default function App() {
         <Route path="wines/:wineId" element={<WineDetailPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="invoices/:invoiceId" element={<InvoiceReviewPage />} />
+        <Route path="alerts" element={<AlertsPage />}>
+          <Route index element={<Navigate to="inventory" replace />} />
+          <Route path="inventory" element={<AlertsInventoryPage />} />
+          <Route path="data-quality" element={<AlertsDataQualityPage />} />
+        </Route>
         <Route path="settings" element={<SettingsPage />}>
           <Route index element={<Navigate to="wines" replace />} />
           <Route path="wines" element={<SettingsWinesPage />} />

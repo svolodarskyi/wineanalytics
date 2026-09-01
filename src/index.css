@@ -194,6 +194,12 @@ table {
   padding: 24px;
 }
 
+/* Alerts tables have more columns than most pages and benefit from the
+   full viewport width instead of the shared 1040px content cap. */
+.app-main--full-width {
+  max-width: 100%;
+}
+
 @media (max-width: 640px) {
   .app-nav {
     padding: 10px 16px;

@@ -19,6 +19,7 @@ const useSupabase = isSupabaseConfigured && import.meta.env.VITE_USE_SUPABASE ==
 export const services: Services = useSupabase ? createSupabaseServices() : createMockServices()
 
 export type {
+  AlertService,
   AuthService,
   InvoiceService,
   ListOptions,

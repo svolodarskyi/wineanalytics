@@ -1,4 +1,5 @@
 import type { Services } from '../types'
+import { createMockAlertService } from './alertService'
 import { createMockAuthService } from './authService'
 import { createMockInvoiceService } from './invoiceService'
 import { createOpenAiService } from './openAiService'
@@ -29,6 +30,7 @@ export function createMockServices(options: MockServicesOptions = {}): Services 
     vendors: createMockVendorService(store, latencyMs),
     invoices: createMockInvoiceService(store, { latencyMs, processingDelayMs }, openai),
     openai,
+    alerts: createMockAlertService(store, latencyMs),
   }
 }
 

@@ -1,4 +1,5 @@
 import type { Services } from '../types'
+import { createSupabaseAlertService } from './alertService'
 import { createSupabaseAuthService } from './authService'
 import { getSupabaseClient } from './client'
 import { createSupabaseInvoiceService } from './invoiceService'
@@ -21,5 +22,6 @@ export function createSupabaseServices(): Services {
     vendors: createSupabaseVendorService(supabase),
     invoices: createSupabaseInvoiceService(supabase, openai),
     openai,
+    alerts: createSupabaseAlertService(supabase),
   }
 }
