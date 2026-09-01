@@ -256,6 +256,7 @@ export function InvoiceReviewPage() {
                   items={vendors ?? []}
                   searchLabel="Search vendors"
                   entityLabel="vendor"
+                  initialQuery={vendorMatch.vendorNameRaw}
                   onCreateNew={(name) => createVendor.mutateAsync({ name, invoiceName: name })}
                   onSelect={(vendorId) => {
                     if (!invoiceId) return
@@ -371,6 +372,7 @@ function LineItemRow({
                 items={wines}
                 searchLabel="Search wines"
                 entityLabel="wine"
+                initialQuery={line.itemNameRaw}
                 onCreateNew={(name) =>
                   createWine.mutateAsync({
                     name,

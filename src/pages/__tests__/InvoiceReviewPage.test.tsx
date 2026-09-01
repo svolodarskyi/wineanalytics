@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { resetSampleInvoiceCursor } from '../../services/mock/sampleInvoices'
 import { resetTestServices, testServicesState } from '../../test/mockServices'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import { InvoiceReviewPage } from '../InvoiceReviewPage'
@@ -67,7 +68,10 @@ describe('InvoiceReviewPage', () => {
     expect(approveButton).toBeDisabled()
 
     // Resolve the vendor via the picker (no AI suggestion exists in this scenario).
+    // The search box is pre-filled with the raw extracted name, so clear it
+    // to see the full unfiltered list before picking by exact name.
     await user.click(screen.getByRole('button', { name: /select vendor/i }))
+    await user.clear(screen.getByLabelText('Search vendors'))
     await user.click(screen.getByRole('button', { name: vendor.name }))
     await screen.findByText('Test Vendor')
     expect(screen.getAllByText('Resolved')[0]).toBeInTheDocument()
@@ -76,6 +80,7 @@ describe('InvoiceReviewPage', () => {
     const rows = screen.getAllByRole('row').filter((row) => within(row).queryByText(/select wine/i))
     for (const row of rows) {
       await user.click(within(row).getByRole('button', { name: /select wine/i }))
+      await user.clear(within(row).getByLabelText('Search wines'))
       await user.click(within(row).getByRole('button', { name: wine.name }))
     }
 
@@ -100,9 +105,12 @@ describe('InvoiceReviewPage', () => {
       path: '/invoices/:invoiceId',
     })
 
-    // No vendors exist at all yet, so the picker offers to create one.
+    // No vendors exist at all yet, so the picker offers to create one. The
+    // search box is pre-filled with the raw extracted vendor name, so it
+    // reads "no vendor found matching" rather than the fully-empty-query copy.
     await user.click(await screen.findByRole('button', { name: /select vendor/i }))
-    expect(screen.getByText(/no vendors yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/no vendor found matching/i)).toBeInTheDocument()
+    await user.clear(screen.getByLabelText('Search vendors'))
     await user.type(screen.getByLabelText('Search vendors'), 'Brand New Vendor')
     await user.click(screen.getByRole('button', { name: /add "brand new vendor" as a new vendor/i }))
     await screen.findByText('Brand New Vendor')
@@ -114,13 +122,37 @@ describe('InvoiceReviewPage', () => {
     // Same flow for a wine SKU on the first line item.
     const row = screen.getAllByRole('row').find((r) => within(r).queryByText(/select wine/i)) as HTMLElement
     await user.click(within(row).getByRole('button', { name: /select wine/i }))
-    expect(within(row).getByText(/no wines yet/i)).toBeInTheDocument()
+    expect(within(row).getByText(/no wine found matching/i)).toBeInTheDocument()
+    await user.clear(within(row).getByLabelText('Search wines'))
     await user.type(within(row).getByLabelText('Search wines'), 'Brand New Wine')
     await user.click(within(row).getByRole('button', { name: /add "brand new wine" as a new wine/i }))
     await within(row).findByText('Brand New Wine')
 
     const createdWine = (await testServicesState.current.wines.list()).find((w) => w.name === 'Brand New Wine')
     expect(createdWine).toBeDefined()
+  })
+
+  it('pre-fills the picker search with the raw extracted name, so create-new is offered without typing', async () => {
+    const user = userEvent.setup()
+    resetTestServices({ seed: false })
+    resetSampleInvoiceCursor()
+    const invoice = await uploadAndWaitForProcessing()
+
+    renderWithProviders(<InvoiceReviewPage />, {
+      route: `/invoices/${invoice.id}`,
+      path: '/invoices/:invoiceId',
+    })
+
+    await user.click(await screen.findByRole('button', { name: /select vendor/i }))
+    expect(screen.getByLabelText('Search vendors')).toHaveValue('Winebow Imports')
+    expect(screen.getByRole('button', { name: /add "winebow imports" as a new vendor/i })).toBeInTheDocument()
+
+    const row = screen.getAllByRole('row').find((r) => within(r).queryByText(/select wine/i)) as HTMLElement
+    await user.click(within(row).getByRole('button', { name: /select wine/i }))
+    expect(within(row).getByLabelText('Search wines')).toHaveValue('Caymus Cabernet Sauvignon')
+    expect(
+      within(row).getByRole('button', { name: /add "caymus cabernet sauvignon" as a new wine/i }),
+    ).toBeInTheDocument()
   })
 
   it('offers "+ Add new" even when the search already matches an existing vendor', async () => {
@@ -135,6 +167,7 @@ describe('InvoiceReviewPage', () => {
     })
 
     await user.click(await screen.findByRole('button', { name: /select vendor/i }))
+    await user.clear(screen.getByLabelText('Search vendors'))
     await user.type(screen.getByLabelText('Search vendors'), 'Existing Vendor')
 
     // The existing match is still selectable...

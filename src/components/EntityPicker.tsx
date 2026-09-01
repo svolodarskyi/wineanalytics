@@ -8,6 +8,8 @@ interface EntityPickerProps {
   entityLabel: string
   /** Creates a brand-new entity with this name. Offered any time the user has typed a name, whether or not it also matches something on the list. */
   onCreateNew?: (name: string) => Promise<{ id: string }>
+  /** Pre-fills the search box, e.g. with the raw name OCR extracted, so existing matches and the create-new option show immediately without retyping. */
+  initialQuery?: string
 }
 
 /**
@@ -15,8 +17,8 @@ interface EntityPickerProps {
  * a fallback to create a new entity at any time. Meant to be rendered inside
  * a centered Modal, so it only ever appears once the user opens it.
  */
-export function EntityPicker({ items, onSelect, searchLabel, entityLabel, onCreateNew }: EntityPickerProps) {
-  const [query, setQuery] = useState('')
+export function EntityPicker({ items, onSelect, searchLabel, entityLabel, onCreateNew, initialQuery }: EntityPickerProps) {
+  const [query, setQuery] = useState(initialQuery ?? '')
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return q ? items.filter((item) => item.name.toLowerCase().includes(q)) : items
