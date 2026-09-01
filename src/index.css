@@ -281,6 +281,13 @@ table {
   margin-top: 16px;
 }
 
+/* Breathing room before the next section's heading when a card comes first -
+   e.g. Alerts' stacked "heading + card" sections. */
+.card + h2,
+.card + .page-header {
+  margin-top: 28px;
+}
+
 .notice {
   border: 1px solid var(--accent-border);
   background: var(--accent-bg);
@@ -324,7 +331,8 @@ table {
 
   /* Wraps a long vendor/wine name onto a second line instead of truncating
      it, so the full name stays readable on a phone. */
-  .data-table--compact td:first-child a {
+  .data-table--compact td:first-child a,
+  .data-table--compact td:first-child .row-link {
     display: inline-block;
     white-space: normal;
     overflow-wrap: break-word;

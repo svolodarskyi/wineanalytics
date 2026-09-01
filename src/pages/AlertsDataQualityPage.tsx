@@ -23,7 +23,7 @@ export function AlertsDataQualityPage() {
           <p className="empty-state">Every wine has all tracked fields filled in.</p>
         )}
         {!!dataQualityAlerts?.length && (
-          <table className="data-table">
+          <table className="data-table data-table--compact">
             <thead>
               <tr>
                 <th>Wine</th>
