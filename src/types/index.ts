@@ -159,6 +159,8 @@ export interface WineSale {
   pourSizeId: string | null
   volumeMl: number
   quantity: number
+  /** Total dollar amount for this entry (not per-unit) - null when not entered, e.g. a manual demo sale where the price wasn't tracked. */
+  amount: number | null
   soldAt: string
   source: SaleSource
   createdAt: string

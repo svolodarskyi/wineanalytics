@@ -71,6 +71,7 @@ interface SaleRow {
   pour_size_id: string | null
   volume_ml: number
   quantity: number | null
+  amount: number | null
   sold_at: string
   source: WineSale['source']
   created_at: string
@@ -84,6 +85,7 @@ function toSale(row: SaleRow): WineSale {
     pourSizeId: row.pour_size_id,
     volumeMl: row.volume_ml,
     quantity: row.quantity ?? 1,
+    amount: row.amount != null ? Number(row.amount) : null,
     soldAt: row.sold_at,
     source: row.source,
     createdAt: row.created_at,

@@ -9,6 +9,7 @@ const SALE_ROW = {
   pour_size_id: null,
   volume_ml: 750,
   quantity: 1,
+  amount: null,
   sold_at: '2026-01-01T00:00:00.000Z',
   source: 'manual' as const,
   created_at: '2026-01-01T00:00:00.000Z',
@@ -30,6 +31,7 @@ describe('supabase sale service', () => {
         pourSizeId: null,
         volumeMl: 750,
         quantity: 1,
+        amount: null,
         soldAt: SALE_ROW.sold_at,
         source: 'manual',
         createdAt: SALE_ROW.created_at,
@@ -77,6 +79,32 @@ describe('supabase sale service', () => {
     const sale = await sales.create({ wineId: 'w1', soldAt: SALE_ROW.sold_at, volumeMl: 150, quantity: 3 })
     expect(sale.quantity).toBe(3)
     expect(insertBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({ quantity: 3 }))
+  })
+
+  it('create passes a given amount through to the insert payload, mapping it back as a number', async () => {
+    const insertBuilder = fakeQueryBuilder({ data: { ...SALE_ROW, amount: '42.50' } })
+    const from = vi.fn(() => insertBuilder)
+    const sales = createSupabaseSaleService(supabaseWith(from))
+    const sale = await sales.create({ wineId: 'w1', soldAt: SALE_ROW.sold_at, volumeMl: 750, amount: 42.5 })
+    expect(sale.amount).toBe(42.5)
+    expect(insertBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({ amount: 42.5 }))
+  })
+
+  it('create defaults amount to null when not given', async () => {
+    const insertBuilder = fakeQueryBuilder({ data: SALE_ROW })
+    const from = vi.fn(() => insertBuilder)
+    const sales = createSupabaseSaleService(supabaseWith(from))
+    await sales.create({ wineId: 'w1', soldAt: SALE_ROW.sold_at, volumeMl: 750 })
+    expect(insertBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({ amount: null }))
+  })
+
+  it('create rejects a negative amount without hitting the database', async () => {
+    const from = vi.fn()
+    const sales = createSupabaseSaleService(supabaseWith(from))
+    await expect(
+      sales.create({ wineId: 'w1', soldAt: SALE_ROW.sold_at, volumeMl: 750, amount: -5 }),
+    ).rejects.toThrow(/non-negative/i)
+    expect(from).not.toHaveBeenCalled()
   })
 
   it('create rejects a non-positive or non-integer quantity without hitting the database', async () => {

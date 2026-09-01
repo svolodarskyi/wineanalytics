@@ -185,6 +185,7 @@ describe('mock alert service', () => {
         pourSizeId: null,
         volumeMl,
         quantity: 1,
+        amount: null,
         soldAt: '2026-01-01T00:00:00.000Z',
         source: 'manual',
         createdAt: new Date().toISOString(),

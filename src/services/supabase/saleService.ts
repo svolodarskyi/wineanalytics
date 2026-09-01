@@ -8,6 +8,7 @@ interface SaleRow {
   pour_size_id: string | null
   volume_ml: number
   quantity: number | null
+  amount: number | null
   sold_at: string
   source: WineSale['source']
   created_at: string
@@ -21,6 +22,7 @@ function fromRow(row: SaleRow): WineSale {
     pourSizeId: row.pour_size_id,
     volumeMl: row.volume_ml,
     quantity: row.quantity ?? 1,
+    amount: row.amount != null ? Number(row.amount) : null,
     soldAt: row.sold_at,
     source: row.source,
     createdAt: row.created_at,
@@ -49,10 +51,16 @@ export function createSupabaseSaleService(supabase: SupabaseClient): SaleService
       pourSizeId?: string | null
       volumeMl?: number
       quantity?: number
+      amount?: number | null
     }): Promise<WineSale> {
       const quantity = input.quantity ?? 1
       if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
         throw new Error('Quantity must be a positive whole number.')
+      }
+
+      const amount = input.amount ?? null
+      if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
+        throw new Error('Amount must be a non-negative number.')
       }
 
       let volumeMl: number
@@ -83,6 +91,7 @@ export function createSupabaseSaleService(supabase: SupabaseClient): SaleService
           pour_size_id: pourSizeId,
           volume_ml: volumeMl,
           quantity,
+          amount,
           sold_at: input.soldAt,
           source: 'manual',
         })

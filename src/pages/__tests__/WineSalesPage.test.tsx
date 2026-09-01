@@ -75,6 +75,30 @@ describe('WineSalesPage', () => {
     expect(screen.getAllByText('750ml')).toHaveLength(2)
   })
 
+  it('records an optional dollar amount alongside the sale, showing a dash when omitted', async () => {
+    const wine = await testServicesState.current.wines.create({ name: 'Bottle Wine', volumeMl: 750 })
+    const user = userEvent.setup()
+    renderWithProviders(<WineSalesPage />, { route: `/wines/${wine.id}`, path: '/wines/:wineId' })
+
+    // First sale: no amount entered.
+    await user.click(await screen.findByRole('button', { name: /record sale/i }))
+    let modal = screen.getByRole('dialog')
+    fireEvent.change(within(modal).getByLabelText(/sold at/i), { target: { value: '2026-01-01T12:00' } })
+    await user.selectOptions(within(modal).getByLabelText(/volume entry/i), 'full-bottle')
+    await user.click(within(modal).getByRole('button', { name: /^record sale$/i }))
+    expect(await screen.findByText('-')).toBeInTheDocument()
+
+    // Second sale: with an amount.
+    await user.click(screen.getByRole('button', { name: /record sale/i }))
+    modal = screen.getByRole('dialog')
+    fireEvent.change(within(modal).getByLabelText(/sold at/i), { target: { value: '2026-01-02T12:00' } })
+    await user.selectOptions(within(modal).getByLabelText(/volume entry/i), 'full-bottle')
+    await user.type(within(modal).getByLabelText(/amount/i), '45.5')
+    await user.click(within(modal).getByRole('button', { name: /^record sale$/i }))
+
+    expect(await screen.findByText('$45.50')).toBeInTheDocument()
+  })
+
   it('records a custom-ml sale and can delete it', async () => {
     const wine = await testServicesState.current.wines.create({ name: 'Custom Wine' })
     const user = userEvent.setup()

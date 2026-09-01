@@ -23,8 +23,13 @@ function useInvalidateAfterSale(wineId: string) {
 export function useCreateSale(wineId: string) {
   const invalidate = useInvalidateAfterSale(wineId)
   return useMutation({
-    mutationFn: (input: { soldAt: string; pourSizeId?: string | null; volumeMl?: number; quantity?: number }) =>
-      services.sales.create({ wineId, ...input }),
+    mutationFn: (input: {
+      soldAt: string
+      pourSizeId?: string | null
+      volumeMl?: number
+      quantity?: number
+      amount?: number | null
+    }) => services.sales.create({ wineId, ...input }),
     onSuccess: invalidate,
   })
 }

@@ -19,6 +19,7 @@ export function createMockSaleService(store: MockStore, latencyMs: number): Sale
       pourSizeId?: string | null
       volumeMl?: number
       quantity?: number
+      amount?: number | null
     }): Promise<WineSale> {
       await delay(latencyMs)
       if (!store.findWine(input.wineId)) throw new Error('Wine not found.')
@@ -26,6 +27,11 @@ export function createMockSaleService(store: MockStore, latencyMs: number): Sale
       const quantity = input.quantity ?? 1
       if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isInteger(quantity)) {
         throw new Error('Quantity must be a positive whole number.')
+      }
+
+      const amount = input.amount ?? null
+      if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
+        throw new Error('Amount must be a non-negative number.')
       }
 
       let volumeMl: number
@@ -49,6 +55,7 @@ export function createMockSaleService(store: MockStore, latencyMs: number): Sale
         pourSizeId,
         volumeMl,
         quantity,
+        amount,
         soldAt: input.soldAt,
         source: 'manual',
         createdAt: new Date().toISOString(),

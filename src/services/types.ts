@@ -139,6 +139,8 @@ export interface SaleService {
     pourSizeId?: string | null
     volumeMl?: number
     quantity?: number
+    /** Total dollar amount for this entry (not per-unit). Optional - null when not tracked. */
+    amount?: number | null
   }): Promise<WineSale>
   delete(id: string): Promise<void>
 }

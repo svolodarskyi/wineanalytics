@@ -41,6 +41,27 @@ describe('mock sale service', () => {
     expect(multiple.quantity).toBe(3)
   })
 
+  it('defaults amount to null and accepts a given amount', async () => {
+    const wine = await services.wines.create({ name: 'Wine' })
+    const withoutAmount = await services.sales.create({ wineId: wine.id, soldAt: '2026-01-01T00:00:00.000Z', volumeMl: 750 })
+    expect(withoutAmount.amount).toBeNull()
+
+    const withAmount = await services.sales.create({
+      wineId: wine.id,
+      soldAt: '2026-01-01T00:00:00.000Z',
+      volumeMl: 750,
+      amount: 42.5,
+    })
+    expect(withAmount.amount).toBe(42.5)
+  })
+
+  it('rejects a negative amount', async () => {
+    const wine = await services.wines.create({ name: 'Wine' })
+    await expect(
+      services.sales.create({ wineId: wine.id, soldAt: '2026-01-01T00:00:00.000Z', volumeMl: 100, amount: -5 }),
+    ).rejects.toThrow(/non-negative/i)
+  })
+
   it('rejects a non-positive or non-integer quantity', async () => {
     const wine = await services.wines.create({ name: 'Wine' })
     await expect(

@@ -5,7 +5,7 @@ import { usePourSizes } from '../hooks/usePourSizes'
 import { useCreateSale, useDeleteSale, useSales } from '../hooks/useSales'
 import { useWine } from '../hooks/useWines'
 import type { WineSale } from '../types'
-import { formatDateTime, formatVolumeMl } from '../utils/format'
+import { formatCurrency, formatDateTime, formatVolumeMl } from '../utils/format'
 
 type EntryMode = 'pour-size' | 'full-bottle' | 'custom'
 
@@ -35,6 +35,7 @@ export function WineSalesPage() {
   const [pourSizeId, setPourSizeId] = useState('')
   const [customVolume, setCustomVolume] = useState('')
   const [quantity, setQuantity] = useState('1')
+  const [amount, setAmount] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -48,6 +49,7 @@ export function WineSalesPage() {
     setPourSizeId(activePourSizes[0]?.id ?? '')
     setCustomVolume('')
     setQuantity('1')
+    setAmount('')
     setFormError(null)
     setIsModalOpen(true)
   }
@@ -69,6 +71,15 @@ export function WineSalesPage() {
       return
     }
 
+    let amountNumber: number | null = null
+    if (amount.trim() !== '') {
+      amountNumber = Number(amount)
+      if (!Number.isFinite(amountNumber) || amountNumber < 0) {
+        setFormError('Enter a non-negative amount.')
+        return
+      }
+    }
+
     setIsSaving(true)
     try {
       if (entryMode === 'pour-size') {
@@ -76,20 +87,25 @@ export function WineSalesPage() {
           setFormError('Choose a pour size.')
           return
         }
-        await createSale.mutateAsync({ soldAt: soldAtIso, pourSizeId, quantity: quantityNumber })
+        await createSale.mutateAsync({ soldAt: soldAtIso, pourSizeId, quantity: quantityNumber, amount: amountNumber })
       } else if (entryMode === 'full-bottle') {
         if (!wine?.volumeMl) {
           setFormError('This wine has no bottle volume set.')
           return
         }
-        await createSale.mutateAsync({ soldAt: soldAtIso, volumeMl: wine.volumeMl, quantity: quantityNumber })
+        await createSale.mutateAsync({
+          soldAt: soldAtIso,
+          volumeMl: wine.volumeMl,
+          quantity: quantityNumber,
+          amount: amountNumber,
+        })
       } else {
         const volumeMl = Number(customVolume)
         if (!customVolume || !Number.isFinite(volumeMl) || volumeMl <= 0) {
           setFormError('Enter a positive volume in ml.')
           return
         }
-        await createSale.mutateAsync({ soldAt: soldAtIso, volumeMl, quantity: quantityNumber })
+        await createSale.mutateAsync({ soldAt: soldAtIso, volumeMl, quantity: quantityNumber, amount: amountNumber })
       }
       setIsModalOpen(false)
     } catch (err) {
@@ -129,6 +145,7 @@ export function WineSalesPage() {
               <th className="numeric">Volume</th>
               <th className="numeric">Quantity</th>
               <th className="numeric">Total</th>
+              <th className="numeric">Amount</th>
               <th></th>
             </tr>
           </thead>
@@ -140,6 +157,7 @@ export function WineSalesPage() {
                 <td className="numeric">{formatVolumeMl(sale.volumeMl)}</td>
                 <td className="numeric">{sale.quantity}</td>
                 <td className="numeric">{formatVolumeMl(sale.volumeMl * sale.quantity)}</td>
+                <td className="numeric">{formatCurrency(sale.amount)}</td>
                 <td>
                   <button
                     type="button"
@@ -226,6 +244,19 @@ export function WineSalesPage() {
                 step="1"
                 value={quantity}
                 onChange={(event) => setQuantity(event.target.value)}
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="sale-amount">Amount ($)</label>
+              <input
+                id="sale-amount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                placeholder="Optional"
               />
             </div>
 
