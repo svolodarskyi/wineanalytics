@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient, type Query } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type Query, type QueryClient } from '@tanstack/react-query'
 import { services } from '../services'
 import type { Invoice, InvoiceStatus } from '../types'
 import { queryKeys } from './queryKeys'
@@ -34,12 +34,40 @@ function useInvalidateInvoices() {
   }
 }
 
+/**
+ * The Invoices list only polls (see useInvoices above) while it can already
+ * see a "processing" row in its *own* result set - which a status-filtered
+ * list (the Approved/Not Approved tabs) never can, since a processing
+ * invoice is filtered out server-side. Without this, a newly uploaded
+ * invoice would only show up under Not Approved once the user happened to
+ * navigate away and back (a fresh query mount) - not as OCR/matching
+ * actually finishes in the background. This keeps invalidating the shared
+ * invoices cache, independent of any page staying mounted, until this
+ * specific invoice leaves "processing".
+ */
+function pollUntilProcessed(queryClient: QueryClient, invoiceId: string, attempt = 0): void {
+  if (attempt >= 30) return // ~30s safety cap
+  setTimeout(async () => {
+    const current = await services.invoices.get(invoiceId)
+    queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    if (current?.status === 'processing') {
+      pollUntilProcessed(queryClient, invoiceId, attempt + 1)
+    }
+  }, PROCESSING_POLL_MS)
+}
+
 export function useUploadInvoice() {
   const invalidate = useInvalidateInvoices()
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (input: { fileName: string; fileType: 'image' | 'pdf'; fileDataUrl: string }) =>
       services.invoices.upload(input),
-    onSuccess: () => invalidate(),
+    onSuccess: (invoice) => {
+      invalidate()
+      if (invoice.status === 'processing') {
+        pollUntilProcessed(queryClient, invoice.id)
+      }
+    },
   })
 }
 

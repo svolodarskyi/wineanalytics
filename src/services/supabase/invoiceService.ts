@@ -120,7 +120,17 @@ async function skuMatchFor(supabase: SupabaseClient, rawName: string): Promise<M
   return { id: confidence ? (best?.id ?? null) : null, confidence, status: confidence ? 'suggested' : 'unresolved' }
 }
 
-/** Fills in a `processing` invoice from an extraction result (real or the empty fallback) and runs matching against current master data. */
+/**
+ * Fills in a `processing` invoice from an extraction result (real or the
+ * empty fallback) and runs matching against current master data.
+ *
+ * Line items/charges are written *before* the invoice's own status flips to
+ * "not_approved" - the review page's polling (see useInvoice in
+ * useInvoices.ts) stops as soon as it observes a non-"processing" status, so
+ * flipping status first left a real window where a poll could land between
+ * that update and the line-item insert and see a "done" invoice with no
+ * line items, never polling again to pick them up.
+ */
 async function completeProcessingFromExtraction(
   supabase: SupabaseClient,
   invoiceId: string,
@@ -133,22 +143,6 @@ async function completeProcessingFromExtraction(
   },
 ): Promise<void> {
   const vendorMatch = await vendorMatchFor(supabase, extraction.vendorNameRaw)
-
-  const { error: updateError } = await supabase
-    .from('wine_invoices')
-    .update({
-      status: 'not_approved',
-      invoice_date: extraction.invoiceDate,
-      total_amount: extraction.totalAmount,
-      vendor_name_raw: extraction.vendorNameRaw,
-      vendor_id: vendorMatch.id,
-      vendor_confidence: vendorMatch.confidence,
-      vendor_match_status: vendorMatch.status,
-    })
-    .eq('id', invoiceId)
-  // Best-effort background completion - if this fails there's nothing more to
-  // do here; the invoice just stays in "processing" for the user to retry.
-  if (updateError) return
 
   if (extraction.lines.length) {
     const lineRows = await Promise.all(
@@ -168,14 +162,31 @@ async function completeProcessingFromExtraction(
         }
       }),
     )
-    await supabase.from('wine_invoice_line_items').insert(lineRows)
+    const { error: lineError } = await supabase.from('wine_invoice_line_items').insert(lineRows)
+    // Best-effort background completion - if this fails there's nothing more to
+    // do here; the invoice just stays in "processing" for the user to retry.
+    if (lineError) return
   }
 
   if (extraction.additionalCharges.length) {
-    await supabase.from('wine_invoice_additional_charges').insert(
+    const { error: chargesError } = await supabase.from('wine_invoice_additional_charges').insert(
       extraction.additionalCharges.map((c) => ({ invoice_id: invoiceId, description: c.description, amount: c.amount })),
     )
+    if (chargesError) return
   }
+
+  await supabase
+    .from('wine_invoices')
+    .update({
+      status: 'not_approved',
+      invoice_date: extraction.invoiceDate,
+      total_amount: extraction.totalAmount,
+      vendor_name_raw: extraction.vendorNameRaw,
+      vendor_id: vendorMatch.id,
+      vendor_confidence: vendorMatch.confidence,
+      vendor_match_status: vendorMatch.status,
+    })
+    .eq('id', invoiceId)
 }
 
 const EMPTY_EXTRACTION = { vendorNameRaw: '', invoiceDate: null, totalAmount: 0, lines: [], additionalCharges: [] }

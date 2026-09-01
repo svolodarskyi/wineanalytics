@@ -78,14 +78,20 @@ describe('supabase invoice service', () => {
     expect(openai.extractInvoice).toHaveBeenCalledWith(
       expect.objectContaining({ fileName: 'invoice.jpg', invoiceId: expect.any(String) }),
     )
-    const lineItemsBuilder = from.mock.results[4].value
+    // Line items/charges are written before the final invoice status update
+    // (see completeProcessingFromExtraction's doc comment) - insert, insert, then update.
+    const lineItemsBuilder = from.mock.results[3].value
     expect(lineItemsBuilder.insert).toHaveBeenCalledWith([
       expect.objectContaining({ item_name_raw: 'Test Wine', quantity: 2 }),
     ])
-    const chargesBuilder = from.mock.results[5].value
+    const chargesBuilder = from.mock.results[4].value
     expect(chargesBuilder.insert).toHaveBeenCalledWith([
       expect.objectContaining({ description: 'Sales Tax', amount: 5 }),
     ])
+    const invoicesUpdateBuilder = from.mock.results[5].value
+    expect(invoicesUpdateBuilder.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'not_approved', vendor_name_raw: 'Acme Wine Co' }),
+    )
   })
 
   it('upload (image) lands fully unresolved when OpenAI extraction fails', async () => {
