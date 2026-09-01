@@ -246,27 +246,53 @@ migrations) — not required to run the app itself:
 
 1. ~~Get the publishable key into `.env`~~ — done (`VITE_SUPABASE_URL` /
    `VITE_SUPABASE_PUBLISHABLE_KEY`).
-2. Run the schema + RLS SQL above (as a Supabase migration file, so it's
-   tracked and repeatable, not a one-off dashboard edit).
-3. Create the two Storage buckets + their policies.
-4. Add `@supabase/supabase-js` and build `src/services/supabase/client.ts`.
-5. Implement `wineService.ts` → `vendorService.ts` → `invoiceService.ts` →
-   `authService.ts`, in that order (wines/vendors are simplest CRUD, good
-   for validating the plumbing before invoices' nested writes).
-6. Port `src/services/mock/seedData.ts`'s six wines / three vendors into the
+2. ~~Write the schema + RLS + Storage-bucket SQL~~ — done:
+   `supabase/migrations/20260901000000_wine_schema.sql`. **Not run yet** -
+   see blocker below.
+3. ~~Add `@supabase/supabase-js` and build `src/services/supabase/client.ts`~~
+   — done.
+4. ~~Implement `authService.ts`~~ — done (§5).
+5. ~~Implement `vendorService.ts`~~ — done: full CRUD, tested against a
+   mocked client (13 tests). Delete blocks when a vendor has invoice
+   history, same as the mock.
+6. ~~Implement `wineService.ts`~~ — done: full CRUD plus `getBalances()`/
+   `getPurchaseHistory()` (aggregated via joins on `wine_invoice_line_items`
+   → `wine_invoices`/`wine_vendors`), tested (10 tests). Photos upload to
+   the `wine-photos` bucket as a `data:` URL is provided, resolved back to a
+   time-limited signed URL on every read (private bucket, per the decision
+   above) — `src/services/supabase/storage.ts` holds that logic, shared
+   with whatever `invoiceService.ts` needs for the `wine-invoices` bucket.
+7. `invoiceService.ts` — not started. The nested writes (invoice + line
+   items + additional charges across 3 tables) and wiring the async OpenAI
+   extraction call to update rows after upload make this a bigger unit than
+   wines/vendors; better as its own pass than folded in here.
+8. Port `src/services/mock/seedData.ts`'s six wines / three vendors into the
    real tables (a one-time seed script), so the app isn't empty on first
    real run.
-7. Switch `src/services/index.ts` to the real implementation.
-8. (Recommended, §7) Move OpenAI extraction into an Edge Function.
-9. Manual smoke test of the full flow against the real backend: upload →
-   extract → match → approve → balance updates.
+9. Switch `src/services/index.ts` to the real implementation (waits on §7 -
+   `Services` needs every sub-interface implemented together).
+10. (Recommended, §7 above) Move OpenAI extraction into an Edge Function -
+    skipped per the decision below, revisit if this changes.
+11. Manual smoke test of the full flow against the real backend: upload →
+    extract → match → approve → balance updates.
+
+**Current blocker on step 2:** nothing in `.env` can execute DDL. The
+publishable key can't run `CREATE TABLE` (by design - it's RLS-scoped data
+access only), and the Management API (the only way to run SQL against a
+project we don't have a direct Postgres connection string for) needs a
+personal access token, which isn't a project-level credential and isn't
+in `.env`. To actually create the tables, either:
+- Paste the migration file's contents into the Supabase dashboard's SQL
+  Editor and run it there (fastest, no new credentials needed), or
+- Add `SUPABASE_SECRET_KEY` for this project to `.env` and a way to reach
+  Postgres directly (connection string, or a Supabase personal access
+  token) so this can be scripted.
 
 Existing mock-backed tests (68 of them) keep running unchanged throughout —
 they test against `MockStore`, not Supabase, so this migration doesn't put
-them at risk. A handful of new tests would make sense once the Supabase
-services exist, but they'd need a real (or locally-run) Supabase instance to
-run against, which is a bigger call about CI setup worth its own decision
-rather than bundling here.
+them at risk. The 23 new Supabase-service tests mock the client entirely
+(no network calls), so they run in CI same as everything else and don't
+depend on the migration having been applied anywhere.
 
 ## Decisions made
 
