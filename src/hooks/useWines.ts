@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { services, type WineListOptions } from '../services'
+import type { Wine } from '../types'
 import { queryKeys } from './queryKeys'
 
 export function useWines(options?: WineListOptions) {
@@ -44,6 +45,8 @@ export function useCreateWine() {
       name: string
       invoiceName?: string | null
       country?: string | null
+      volume?: string | null
+      category?: Wine['category']
       imageDataUrl?: string | null
     }) => services.wines.create(input),
     onSuccess: invalidate,
@@ -61,6 +64,8 @@ export function useUpdateWine() {
       name: string
       invoiceName?: string | null
       country?: string | null
+      volume?: string | null
+      category?: Wine['category']
       imageDataUrl?: string | null
     }) => services.wines.update(id, input),
     onSuccess: invalidate,

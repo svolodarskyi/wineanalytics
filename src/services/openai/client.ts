@@ -1,9 +1,13 @@
-import type { AdditionalCharge, OpenAiUsage } from '../../types'
+import type { AdditionalCharge, OpenAiUsage, WineCategory } from '../../types'
 import { estimateCostUsd, OPENAI_MODEL } from './pricing'
 import { INVOICE_EXTRACTION_PROMPT } from './prompt'
 
+const WINE_CATEGORIES: readonly WineCategory[] = ['red', 'white', 'rose', 'sparkling', 'dessert', 'fortified', 'other']
+
 export interface OpenAiExtractedLineItem {
   itemName: string
+  volume: string | null
+  category: WineCategory | null
   quantity: number
   unitPrice: number
   lineTotal: number
@@ -43,6 +47,8 @@ function coerceExtractedInvoice(value: unknown): OpenAiExtractedInvoice {
       const line = (item ?? {}) as Record<string, unknown>
       return {
         itemName: typeof line.itemName === 'string' ? line.itemName : 'Unknown item',
+        volume: typeof line.volume === 'string' && line.volume.trim() ? line.volume : null,
+        category: WINE_CATEGORIES.includes(line.category as WineCategory) ? (line.category as WineCategory) : null,
         quantity: toNumber(line.quantity),
         unitPrice: toNumber(line.unitPrice),
         lineTotal: toNumber(line.lineTotal),

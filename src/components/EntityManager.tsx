@@ -1,6 +1,17 @@
 import { useRef, useState, type ChangeEvent, type SubmitEvent } from 'react'
+import type { WineCategory } from '../types'
 import { readFileAsDataUrl } from '../utils/readFileAsDataUrl'
 import { Modal } from './Modal'
+
+const WINE_CATEGORY_OPTIONS: { value: WineCategory; label: string }[] = [
+  { value: 'red', label: 'Red' },
+  { value: 'white', label: 'White' },
+  { value: 'rose', label: 'Rosé' },
+  { value: 'sparkling', label: 'Sparkling' },
+  { value: 'dessert', label: 'Dessert' },
+  { value: 'fortified', label: 'Fortified' },
+  { value: 'other', label: 'Other' },
+]
 
 interface Entity {
   id: string
@@ -8,6 +19,8 @@ interface Entity {
   invoiceName?: string | null
   active: boolean
   country?: string | null
+  volume?: string | null
+  category?: WineCategory | null
   imageDataUrl?: string | null
 }
 
@@ -15,6 +28,8 @@ interface EntityInput {
   name: string
   invoiceName?: string | null
   country?: string
+  volume?: string
+  category?: WineCategory | null
   imageDataUrl?: string | null
 }
 
@@ -34,6 +49,8 @@ interface EntityManagerProps {
   onDelete: (id: string) => Promise<unknown>
   /** Shows a Country field in the create/detail popups. Wines only. */
   showCountry?: boolean
+  /** Shows Volume and Category fields in the create/detail popups. Wines only. */
+  showWineDetails?: boolean
   /** Shows a photo upload/thumbnail. Wines only. */
   showImage?: boolean
 }
@@ -95,12 +112,15 @@ export function EntityManager({
   onSetActive,
   onDelete,
   showCountry,
+  showWineDetails,
   showImage,
 }: EntityManagerProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newInvoiceName, setNewInvoiceName] = useState('')
   const [newCountry, setNewCountry] = useState('')
+  const [newVolume, setNewVolume] = useState('')
+  const [newCategory, setNewCategory] = useState<WineCategory | ''>('')
   const [newImage, setNewImage] = useState<string | null>(null)
   const [createError, setCreateError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
@@ -109,6 +129,8 @@ export function EntityManager({
   const [detailName, setDetailName] = useState('')
   const [detailInvoiceName, setDetailInvoiceName] = useState('')
   const [detailCountry, setDetailCountry] = useState('')
+  const [detailVolume, setDetailVolume] = useState('')
+  const [detailCategory, setDetailCategory] = useState<WineCategory | ''>('')
   const [detailImage, setDetailImage] = useState<string | null>(null)
   const [detailError, setDetailError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -118,6 +140,8 @@ export function EntityManager({
     setNewName('')
     setNewInvoiceName('')
     setNewCountry('')
+    setNewVolume('')
+    setNewCategory('')
     setNewImage(null)
     setCreateError(null)
     setIsCreateOpen(true)
@@ -128,7 +152,14 @@ export function EntityManager({
     setCreateError(null)
     setIsCreating(true)
     try {
-      await onCreate({ name: newName, invoiceName: newInvoiceName, country: newCountry, imageDataUrl: newImage })
+      await onCreate({
+        name: newName,
+        invoiceName: newInvoiceName,
+        country: newCountry,
+        volume: newVolume,
+        category: newCategory || null,
+        imageDataUrl: newImage,
+      })
       setIsCreateOpen(false)
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Could not create.')
@@ -142,6 +173,8 @@ export function EntityManager({
     setDetailName(entity.name)
     setDetailInvoiceName(entity.invoiceName ?? '')
     setDetailCountry(entity.country ?? '')
+    setDetailVolume(entity.volume ?? '')
+    setDetailCategory(entity.category ?? '')
     setDetailImage(entity.imageDataUrl ?? null)
     setDetailError(null)
   }
@@ -155,6 +188,8 @@ export function EntityManager({
         name: detailName,
         invoiceName: detailInvoiceName,
         country: detailCountry,
+        volume: detailVolume,
+        category: detailCategory || null,
         imageDataUrl: detailImage,
       })
       setDetailItem(null)
@@ -231,6 +266,34 @@ export function EntityManager({
                 />
               </div>
             )}
+            {showWineDetails && (
+              <div className="field">
+                <label htmlFor="new-entity-volume">Volume</label>
+                <input
+                  id="new-entity-volume"
+                  value={newVolume}
+                  onChange={(event) => setNewVolume(event.target.value)}
+                  placeholder="e.g. 750ml"
+                />
+              </div>
+            )}
+            {showWineDetails && (
+              <div className="field">
+                <label htmlFor="new-entity-category">Category</label>
+                <select
+                  id="new-entity-category"
+                  value={newCategory}
+                  onChange={(event) => setNewCategory(event.target.value as WineCategory | '')}
+                >
+                  <option value="">Not set</option>
+                  {WINE_CATEGORY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             {showImage && <ImageField label="Photo" imageDataUrl={newImage} onChange={setNewImage} />}
             {createError && <p className="notice notice--error">{createError}</p>}
             <div className="picker" style={{ justifyContent: 'flex-end' }}>
@@ -274,6 +337,34 @@ export function EntityManager({
                   value={detailCountry}
                   onChange={(event) => setDetailCountry(event.target.value)}
                 />
+              </div>
+            )}
+            {showWineDetails && (
+              <div className="field">
+                <label htmlFor="detail-entity-volume">Volume</label>
+                <input
+                  id="detail-entity-volume"
+                  value={detailVolume}
+                  onChange={(event) => setDetailVolume(event.target.value)}
+                  placeholder="e.g. 750ml"
+                />
+              </div>
+            )}
+            {showWineDetails && (
+              <div className="field">
+                <label htmlFor="detail-entity-category">Category</label>
+                <select
+                  id="detail-entity-category"
+                  value={detailCategory}
+                  onChange={(event) => setDetailCategory(event.target.value as WineCategory | '')}
+                >
+                  <option value="">Not set</option>
+                  {WINE_CATEGORY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
             {showImage && <ImageField label="Photo" imageDataUrl={detailImage} onChange={setDetailImage} />}

@@ -10,6 +10,8 @@ interface WineRow {
   name: string
   invoice_name: string | null
   country: string | null
+  volume: string | null
+  category: Wine['category']
   image_url: string | null
   active: boolean
   created_at: string
@@ -21,6 +23,8 @@ async function toWine(supabase: SupabaseClient, row: WineRow): Promise<Wine> {
     name: row.name,
     invoiceName: row.invoice_name,
     country: row.country,
+    volume: row.volume,
+    category: row.category,
     imageDataUrl: await resolveSignedUrl(supabase, PHOTOS_BUCKET, row.image_url),
     active: row.active,
     createdAt: row.created_at,
@@ -77,6 +81,8 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
       name: string
       invoiceName?: string | null
       country?: string | null
+      volume?: string | null
+      category?: Wine['category']
       imageDataUrl?: string | null
     }): Promise<Wine> {
       const name = input.name.trim()
@@ -95,6 +101,8 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
           name,
           invoice_name: input.invoiceName?.trim() || null,
           country: input.country?.trim() || null,
+          volume: input.volume?.trim() || null,
+          category: input.category ?? null,
           image_url: imagePath,
         })
         .select('*')
@@ -108,7 +116,14 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
 
     async update(
       id: string,
-      input: { name: string; invoiceName?: string | null; country?: string | null; imageDataUrl?: string | null },
+      input: {
+        name: string
+        invoiceName?: string | null
+        country?: string | null
+        volume?: string | null
+        category?: Wine['category']
+        imageDataUrl?: string | null
+      },
     ): Promise<Wine> {
       const name = input.name.trim()
       if (!name) throw new Error('Wine name is required.')
@@ -129,6 +144,8 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
           name,
           invoice_name: input.invoiceName?.trim() || null,
           country: input.country?.trim() || null,
+          volume: input.volume?.trim() || null,
+          category: input.category ?? null,
           ...(imagePath !== undefined ? { image_url: imagePath } : {}),
         })
         .eq('id', id)

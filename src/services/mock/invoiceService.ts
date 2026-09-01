@@ -130,6 +130,15 @@ export function createMockInvoiceService(
       }))
     },
 
+    async updateInvoiceDate(invoiceId: string, invoiceDate: string | null): Promise<Invoice> {
+      await delay(latencyMs)
+      requireInvoice(store, invoiceId)
+      return store.updateInvoice(invoiceId, (current) => ({
+        ...current,
+        extracted: { ...current.extracted, invoiceDate },
+      }))
+    },
+
     async approve(invoiceId: string): Promise<Invoice> {
       await delay(latencyMs)
       const invoice = requireInvoice(store, invoiceId)

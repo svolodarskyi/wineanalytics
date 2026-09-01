@@ -8,6 +8,7 @@ import type {
   Vendor,
   Wine,
   WineBalance,
+  WineCategory,
 } from '../types'
 
 /**
@@ -35,11 +36,20 @@ export interface WineService {
     name: string
     invoiceName?: string | null
     country?: string | null
+    volume?: string | null
+    category?: WineCategory | null
     imageDataUrl?: string | null
   }): Promise<Wine>
   update(
     id: string,
-    input: { name: string; invoiceName?: string | null; country?: string | null; imageDataUrl?: string | null },
+    input: {
+      name: string
+      invoiceName?: string | null
+      country?: string | null
+      volume?: string | null
+      category?: WineCategory | null
+      imageDataUrl?: string | null
+    },
   ): Promise<Wine>
   setActive(id: string, active: boolean): Promise<Wine>
   /** Permanently removes a wine that has never appeared on any invoice. Throws if it has purchase history - deactivate instead. */
@@ -71,6 +81,8 @@ export interface InvoiceService {
   confirmSkuMatch(invoiceId: string, lineItemId: string): Promise<Invoice>
   /** Overrides a line item's SKU match with a user-selected wine. */
   selectSkuMatch(invoiceId: string, lineItemId: string, wineId: string): Promise<Invoice>
+  /** Corrects the extracted invoice date by hand, e.g. when OCR missed or misread it. */
+  updateInvoiceDate(invoiceId: string, invoiceDate: string | null): Promise<Invoice>
   /** Approves the invoice, folding its line items into wine balances. */
   approve(invoiceId: string): Promise<Invoice>
 }
@@ -83,6 +95,8 @@ export interface AuthService {
 
 export interface OpenAiExtractedLine {
   itemNameRaw: string
+  volumeRaw: string | null
+  categoryRaw: WineCategory | null
   quantity: number
   unitPrice: number
   lineTotal: number

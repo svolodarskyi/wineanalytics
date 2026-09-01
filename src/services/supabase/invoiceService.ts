@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { confidenceFromScore, findBestMatch } from '../mock/similarity'
-import type { AdditionalCharge, Confidence, Invoice, InvoiceStatus, MatchStatus } from '../../types'
+import type { AdditionalCharge, Confidence, Invoice, InvoiceStatus, MatchStatus, WineCategory } from '../../types'
 import type { InvoiceService, OpenAiExtractedLine, OpenAiService } from '../types'
 import { resolveSignedUrl, uploadDataUrl } from './storage'
 
@@ -28,6 +28,8 @@ interface InvoiceRow {
 interface LineItemRow {
   id: string
   item_name_raw: string
+  volume_raw: string | null
+  category_raw: WineCategory | null
   quantity: number
   unit_price: number
   line_total: number
@@ -71,6 +73,8 @@ async function toInvoice(supabase: SupabaseClient, row: InvoiceRow): Promise<Inv
     lineItems: (row.wine_invoice_line_items ?? []).map((li) => ({
       id: li.id,
       itemNameRaw: li.item_name_raw,
+      volumeRaw: li.volume_raw,
+      categoryRaw: li.category_raw,
       quantity: Number(li.quantity),
       unitPrice: Number(li.unit_price),
       lineTotal: Number(li.line_total),
@@ -153,6 +157,8 @@ async function completeProcessingFromExtraction(
         return {
           invoice_id: invoiceId,
           item_name_raw: line.itemNameRaw,
+          volume_raw: line.volumeRaw,
+          category_raw: line.categoryRaw,
           quantity: line.quantity,
           unit_price: line.unitPrice,
           line_total: line.lineTotal,
@@ -288,6 +294,12 @@ export function createSupabaseInvoiceService(supabase: SupabaseClient, openai: O
         if (error.code === '23503') throw new Error('Wine not found.')
         throw new Error(error.message)
       }
+      return fetchInvoice(supabase, invoiceId)
+    },
+
+    async updateInvoiceDate(invoiceId: string, invoiceDate: string | null): Promise<Invoice> {
+      const { error } = await supabase.from('wine_invoices').update({ invoice_date: invoiceDate }).eq('id', invoiceId)
+      throwIfError(error)
       return fetchInvoice(supabase, invoiceId)
     },
 

@@ -116,6 +116,17 @@ describe('supabase invoice service', () => {
     await expect(invoices.selectVendorMatch('inv1', 'missing-vendor')).rejects.toThrow(/vendor not found/i)
   })
 
+  it('updateInvoiceDate corrects the extracted date by hand', async () => {
+    const from = routedSupabaseFrom({
+      wine_invoices: [{ error: null }, { data: { ...NEW_ROW, invoice_date: '2026-03-15' } }],
+    })
+    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
+    const updated = await invoices.updateInvoiceDate('inv1', '2026-03-15')
+    expect(updated.extracted.invoiceDate).toBe('2026-03-15')
+    const updateBuilder = from.mock.results[0].value
+    expect(updateBuilder.update).toHaveBeenCalledWith({ invoice_date: '2026-03-15' })
+  })
+
   describe('approve', () => {
     const resolvedInvoiceRow = {
       ...NEW_ROW,

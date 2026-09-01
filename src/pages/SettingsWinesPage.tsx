@@ -27,6 +27,7 @@ export function SettingsWinesPage() {
       onSetActive={(id, active) => setWineActive.mutateAsync({ id, active })}
       onDelete={(id) => deleteWine.mutateAsync(id)}
       showCountry
+      showWineDetails
       showImage
     />
   )

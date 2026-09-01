@@ -32,6 +32,8 @@ export function createOpenAiService(store: MockStore, latencyMs: number): OpenAi
           totalAmount: result.parsed.totalAmount,
           lines: result.parsed.lineItems.map((item) => ({
             itemNameRaw: item.itemName,
+            volumeRaw: item.volume,
+            categoryRaw: item.category,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             lineTotal: item.lineTotal,

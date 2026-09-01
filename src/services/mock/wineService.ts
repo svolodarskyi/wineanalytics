@@ -34,6 +34,8 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
       name: string
       invoiceName?: string | null
       country?: string | null
+      volume?: string | null
+      category?: Wine['category']
       imageDataUrl?: string | null
     }): Promise<Wine> {
       await delay(latencyMs)
@@ -46,6 +48,8 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
         name,
         invoiceName: input.invoiceName?.trim() || null,
         country: input.country?.trim() || null,
+        volume: input.volume?.trim() || null,
+        category: input.category ?? null,
         imageDataUrl: input.imageDataUrl ?? null,
         active: true,
         createdAt: new Date().toISOString(),
@@ -56,7 +60,14 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
 
     async update(
       id: string,
-      input: { name: string; invoiceName?: string | null; country?: string | null; imageDataUrl?: string | null },
+      input: {
+        name: string
+        invoiceName?: string | null
+        country?: string | null
+        volume?: string | null
+        category?: Wine['category']
+        imageDataUrl?: string | null
+      },
     ): Promise<Wine> {
       await delay(latencyMs)
       if (!store.findWine(id)) throw new Error('Wine not found.')
@@ -67,6 +78,8 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
         name,
         invoiceName: input.invoiceName?.trim() || null,
         country: input.country?.trim() || null,
+        volume: input.volume?.trim() || null,
+        category: input.category ?? null,
         imageDataUrl: input.imageDataUrl !== undefined ? input.imageDataUrl : wine.imageDataUrl,
       }))
     },

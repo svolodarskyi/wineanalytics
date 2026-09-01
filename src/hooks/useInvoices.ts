@@ -78,6 +78,15 @@ export function useSelectSkuMatch() {
   })
 }
 
+export function useUpdateInvoiceDate() {
+  const invalidate = useInvalidateInvoices()
+  return useMutation({
+    mutationFn: ({ invoiceId, invoiceDate }: { invoiceId: string; invoiceDate: string | null }) =>
+      services.invoices.updateInvoiceDate(invoiceId, invoiceDate),
+    onSuccess: (invoice) => invalidate(invoice.id),
+  })
+}
+
 export function useApproveInvoice() {
   const invalidate = useInvalidateInvoices()
   const queryClient = useQueryClient()

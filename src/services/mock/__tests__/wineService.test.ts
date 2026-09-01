@@ -48,6 +48,20 @@ describe('mock wine service', () => {
     expect(updated.invoiceName).toBe('CAYMUS CS 750')
   })
 
+  it('stores volume and category, defaulting to null', async () => {
+    const bare = await services.wines.create({ name: 'Bare Wine' })
+    expect(bare.volume).toBeNull()
+    expect(bare.category).toBeNull()
+
+    const detailed = await services.wines.create({ name: 'Detailed Wine', volume: '750ml', category: 'red' })
+    expect(detailed.volume).toBe('750ml')
+    expect(detailed.category).toBe('red')
+
+    const updated = await services.wines.update(detailed.id, { name: 'Detailed Wine', volume: '1.5L', category: 'white' })
+    expect(updated.volume).toBe('1.5L')
+    expect(updated.category).toBe('white')
+  })
+
   it('deactivating a wine hides it from the default list but keeps it with includeInactive', async () => {
     const wine = await services.wines.create({ name: 'Soon Retired' })
     await services.wines.setActive(wine.id, false)

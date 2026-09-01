@@ -117,6 +117,17 @@ describe('mock invoice service', () => {
     expect(updatedSecond?.skuMatch).toEqual(second.skuMatch)
   })
 
+  it('updateInvoiceDate corrects the extracted date by hand', async () => {
+    const invoice = await services.invoices.upload(SAMPLE_FILE)
+    await waitForProcessing(services, invoice.id)
+
+    const updated = await services.invoices.updateInvoiceDate(invoice.id, '2026-03-15')
+    expect(updated.extracted.invoiceDate).toBe('2026-03-15')
+
+    const cleared = await services.invoices.updateInvoiceDate(invoice.id, null)
+    expect(cleared.extracted.invoiceDate).toBeNull()
+  })
+
   describe('approve (happy path)', () => {
     it('rejects approval while still processing', async () => {
       const invoice = await services.invoices.upload(SAMPLE_FILE)

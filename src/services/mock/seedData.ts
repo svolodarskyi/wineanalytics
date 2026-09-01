@@ -3,19 +3,21 @@ import { createId } from './ids'
 
 export function seedWines(): Wine[] {
   const now = new Date().toISOString()
-  const wines = [
-    { name: 'Chateau Ste. Michelle Riesling', country: 'USA' },
-    { name: 'Caymus Cabernet Sauvignon', country: 'USA' },
-    { name: 'Kim Crawford Sauvignon Blanc', country: 'New Zealand' },
-    { name: 'Veuve Clicquot Brut', country: 'France' },
-    { name: 'Antinori Tignanello', country: 'Italy' },
-    { name: 'La Crema Pinot Noir', country: 'USA' },
+  const wines: { name: string; country: string; category: Wine['category'] }[] = [
+    { name: 'Chateau Ste. Michelle Riesling', country: 'USA', category: 'white' },
+    { name: 'Caymus Cabernet Sauvignon', country: 'USA', category: 'red' },
+    { name: 'Kim Crawford Sauvignon Blanc', country: 'New Zealand', category: 'white' },
+    { name: 'Veuve Clicquot Brut', country: 'France', category: 'sparkling' },
+    { name: 'Antinori Tignanello', country: 'Italy', category: 'red' },
+    { name: 'La Crema Pinot Noir', country: 'USA', category: 'red' },
   ]
-  return wines.map(({ name, country }) => ({
+  return wines.map(({ name, country, category }) => ({
     id: createId('wine'),
     name,
     invoiceName: null,
     country,
+    volume: null,
+    category,
     imageDataUrl: null,
     active: true,
     createdAt: now,

@@ -4,12 +4,17 @@ export type MatchStatus = 'suggested' | 'confirmed' | 'changed' | 'unresolved'
 
 export type InvoiceStatus = 'processing' | 'not_approved' | 'approved'
 
+export type WineCategory = 'red' | 'white' | 'rose' | 'sparkling' | 'dessert' | 'fortified' | 'other'
+
 export interface Wine {
   id: string
   name: string
   /** Name as it typically appears on vendor invoices, if different from the display name. Falls back to `name` for matching when unset. */
   invoiceName: string | null
   country: string | null
+  /** Bottle size as free text, e.g. "750ml", "1.5L". */
+  volume: string | null
+  category: WineCategory | null
   /** Data URL of an uploaded label/bottle photo, if any. */
   imageDataUrl: string | null
   active: boolean
@@ -41,6 +46,10 @@ export interface SkuMatch {
 export interface InvoiceLineItem {
   id: string
   itemNameRaw: string
+  /** Bottle size as extracted from the invoice, e.g. "750ml" - kept separate from itemNameRaw so it can pre-fill a new wine's `volume` field. */
+  volumeRaw: string | null
+  /** Best-effort category guess from the item name, e.g. "red"/"white" - pre-fills a new wine's `category` field. */
+  categoryRaw: WineCategory | null
   quantity: number
   unitPrice: number
   lineTotal: number

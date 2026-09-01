@@ -11,6 +11,7 @@ import {
   useInvoice,
   useSelectSkuMatch,
   useSelectVendorMatch,
+  useUpdateInvoiceDate,
 } from '../hooks/useInvoices'
 import { useCreateVendor, useVendors } from '../hooks/useVendors'
 import { useCreateWine, useWines } from '../hooks/useWines'
@@ -32,10 +33,13 @@ export function InvoiceReviewPage() {
   const selectSkuMatch = useSelectSkuMatch()
   const approveInvoice = useApproveInvoice()
   const createVendor = useCreateVendor()
+  const updateInvoiceDate = useUpdateInvoiceDate()
 
   const [activePicker, setActivePicker] = useState<ActivePicker>(null)
   const [isDocOpen, setIsDocOpen] = useState(false)
   const [isImageZoomed, setIsImageZoomed] = useState(false)
+  const [isEditingDate, setIsEditingDate] = useState(false)
+  const [dateDraft, setDateDraft] = useState('')
 
   const vendorName = useMemo(() => {
     const id = invoice?.extracted.vendorMatch.vendorId
@@ -143,7 +147,50 @@ export function InvoiceReviewPage() {
             <tbody>
               <tr>
                 <th>Invoice date</th>
-                <td>{formatDate(invoice.extracted.invoiceDate)}</td>
+                <td>
+                  {isEditingDate ? (
+                    <div className="picker">
+                      <input
+                        type="date"
+                        className="search-input"
+                        value={dateDraft}
+                        onChange={(event) => setDateDraft(event.target.value)}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        className="btn btn--small btn--primary"
+                        disabled={updateInvoiceDate.isPending}
+                        onClick={() =>
+                          invoiceId &&
+                          updateInvoiceDate.mutate(
+                            { invoiceId, invoiceDate: dateDraft || null },
+                            { onSuccess: () => setIsEditingDate(false) },
+                          )
+                        }
+                      >
+                        {updateInvoiceDate.isPending ? 'Saving...' : 'Save'}
+                      </button>
+                      <button type="button" className="btn btn--small" onClick={() => setIsEditingDate(false)}>
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="picker">
+                      <span>{formatDate(invoice.extracted.invoiceDate)}</span>
+                      <button
+                        type="button"
+                        className="btn btn--small"
+                        onClick={() => {
+                          setDateDraft(invoice.extracted.invoiceDate?.slice(0, 10) ?? '')
+                          setIsEditingDate(true)
+                        }}
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  )}
+                </td>
               </tr>
               <tr>
                 <th>Total amount</th>
@@ -230,6 +277,7 @@ export function InvoiceReviewPage() {
             <thead>
               <tr>
                 <th>Item</th>
+                <th>Volume</th>
                 <th className="numeric">Qty</th>
                 <th className="numeric">Unit Price</th>
                 <th className="numeric">Line Total</th>
@@ -292,6 +340,7 @@ function LineItemRow({
   return (
     <tr>
       <td>{line.itemNameRaw}</td>
+      <td>{line.volumeRaw ?? '-'}</td>
       <td className="numeric">{line.quantity}</td>
       <td className="numeric">{formatCurrency(line.unitPrice)}</td>
       <td className="numeric">{formatCurrency(line.lineTotal)}</td>
@@ -322,7 +371,14 @@ function LineItemRow({
                 items={wines}
                 searchLabel="Search wines"
                 entityLabel="wine"
-                onCreateNew={(name) => createWine.mutateAsync({ name, invoiceName: name })}
+                onCreateNew={(name) =>
+                  createWine.mutateAsync({
+                    name,
+                    invoiceName: name,
+                    volume: line.volumeRaw,
+                    category: line.categoryRaw,
+                  })
+                }
                 onSelect={onSelect}
               />
             </Modal>
