@@ -64,21 +64,12 @@ describe('mock wine service', () => {
     expect(updated.country).toBe('Italy')
   })
 
-  it('sorts by country then name when sortBy is "country", and by name otherwise', async () => {
+  it('always lists wines sorted alphabetically by name', async () => {
     await services.wines.create({ name: 'Zeta Wine', country: 'Argentina' })
-    await services.wines.create({ name: 'Alpha Wine', country: 'Argentina' })
-    await services.wines.create({ name: 'Beta Wine', country: 'Chile' })
+    await services.wines.create({ name: 'Alpha Wine', country: 'Chile' })
 
-    const byCountry = await services.wines.list({ sortBy: 'country' })
-    const countryOrder = byCountry.map((w) => w.country)
-    const sortedCopy = [...countryOrder].sort((a, b) => (a ?? '').localeCompare(b ?? ''))
-    expect(countryOrder).toEqual(sortedCopy)
-    // Within the same country, alphabetical by name.
-    const argentinaNames = byCountry.filter((w) => w.country === 'Argentina').map((w) => w.name)
-    expect(argentinaNames).toEqual(['Alpha Wine', 'Zeta Wine'])
-
-    const byName = await services.wines.list({ sortBy: 'name' })
-    const names = byName.map((w) => w.name)
+    const wines = await services.wines.list()
+    const names = wines.map((w) => w.name)
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
   })
 

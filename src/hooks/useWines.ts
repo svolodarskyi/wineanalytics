@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { services, type WineListOptions, type WineSortBy } from '../services'
+import { services, type WineListOptions } from '../services'
 import { queryKeys } from './queryKeys'
 
 export function useWines(options?: WineListOptions) {
@@ -17,10 +17,10 @@ export function useWine(id: string | undefined) {
   })
 }
 
-export function useWineBalances(sortBy?: WineSortBy) {
+export function useWineBalances() {
   return useQuery({
-    queryKey: [...queryKeys.wineBalances(), sortBy ?? 'name'],
-    queryFn: () => services.wines.getBalances({ sortBy }),
+    queryKey: queryKeys.wineBalances(),
+    queryFn: () => services.wines.getBalances(),
   })
 }
 

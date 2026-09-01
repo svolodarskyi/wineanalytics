@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState, type ChangeEvent, type SubmitEvent } from 'react'
+import { useRef, useState, type ChangeEvent, type SubmitEvent } from 'react'
 import { readFileAsDataUrl } from '../utils/readFileAsDataUrl'
 import { Modal } from './Modal'
 
@@ -8,11 +8,6 @@ interface Entity {
   active: boolean
   country?: string | null
   imageDataUrl?: string | null
-}
-
-interface SortOption {
-  value: string
-  label: string
 }
 
 interface EntityInput {
@@ -35,13 +30,10 @@ interface EntityManagerProps {
   onSetActive: (id: string, active: boolean) => Promise<unknown>
   /** Permanently removes the item. Rejects if it has invoice history - the caller should deactivate instead. */
   onDelete: (id: string) => Promise<unknown>
-  /** Shows a Country field/column and enables sorting by it. Wines only. */
+  /** Shows a Country field in the create/detail popups. Wines only. */
   showCountry?: boolean
   /** Shows a photo upload/thumbnail. Wines only. */
   showImage?: boolean
-  sortBy?: string
-  sortOptions?: SortOption[]
-  onSortByChange?: (value: string) => void
 }
 
 function ImageField({
@@ -102,9 +94,6 @@ export function EntityManager({
   onDelete,
   showCountry,
   showImage,
-  sortBy,
-  sortOptions,
-  onSortByChange,
 }: EntityManagerProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newName, setNewName] = useState('')
@@ -307,15 +296,6 @@ export function EntityManager({
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
         />
-        {sortOptions && onSortByChange && (
-          <select aria-label="Sort by" value={sortBy} onChange={(event) => onSortByChange(event.target.value)}>
-            {sortOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                Sort by {option.label}
-              </option>
-            ))}
-          </select>
-        )}
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
           <input
             type="checkbox"
@@ -342,29 +322,18 @@ export function EntityManager({
               </tr>
             </thead>
             <tbody>
-              {items.map((item, index) => {
-                const previousCountry = index > 0 ? (items[index - 1].country ?? null) : undefined
-                const showGroupHeading = showCountry && sortBy === 'country' && (item.country ?? null) !== previousCountry
-                return (
-                  <Fragment key={item.id}>
-                    {showGroupHeading && (
-                      <tr className="data-table__group-row">
-                        <td colSpan={2}>{item.country ?? 'Unknown country'}</td>
-                      </tr>
-                    )}
-                    <tr className="data-table__row--clickable" onClick={() => openDetail(item)}>
-                      <td>
-                        <span className="row-link">{item.name}</span>
-                      </td>
-                      <td>
-                        <span className={`badge ${item.active ? 'badge--confirmed' : 'badge--neutral'}`}>
-                          {item.active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                    </tr>
-                  </Fragment>
-                )
-              })}
+              {items.map((item) => (
+                <tr key={item.id} className="data-table__row--clickable" onClick={() => openDetail(item)}>
+                  <td>
+                    <span className="row-link">{item.name}</span>
+                  </td>
+                  <td>
+                    <span className={`badge ${item.active ? 'badge--confirmed' : 'badge--neutral'}`}>
+                      {item.active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         )}

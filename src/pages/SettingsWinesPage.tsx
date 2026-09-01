@@ -1,18 +1,11 @@
 import { useState } from 'react'
 import { EntityManager } from '../components/EntityManager'
 import { useCreateWine, useDeleteWine, useSetWineActive, useUpdateWine, useWines } from '../hooks/useWines'
-import type { WineSortBy } from '../services'
-
-const SORT_OPTIONS: { value: WineSortBy; label: string }[] = [
-  { value: 'name', label: 'name' },
-  { value: 'country', label: 'country' },
-]
 
 export function SettingsWinesPage() {
   const [query, setQuery] = useState('')
   const [includeInactive, setIncludeInactive] = useState(false)
-  const [sortBy, setSortBy] = useState<WineSortBy>('name')
-  const { data: wines, isLoading } = useWines({ query, includeInactive, sortBy })
+  const { data: wines, isLoading } = useWines({ query, includeInactive })
 
   const createWine = useCreateWine()
   const updateWine = useUpdateWine()
@@ -35,9 +28,6 @@ export function SettingsWinesPage() {
       onDelete={(id) => deleteWine.mutateAsync(id)}
       showCountry
       showImage
-      sortBy={sortBy}
-      sortOptions={SORT_OPTIONS}
-      onSortByChange={(value) => setSortBy(value as WineSortBy)}
     />
   )
 }

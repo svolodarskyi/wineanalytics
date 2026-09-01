@@ -11,3 +11,5 @@ mayeb graph of purchase prices on each wine inventory page. + maybe opportunity 
 mock uploading of data
 
 can log orders? so everythign in one place. so other people can see?
+
+how fast are being counsumed. turnaround time?

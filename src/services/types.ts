@@ -24,11 +24,7 @@ export interface ListOptions {
   includeInactive?: boolean
 }
 
-export type WineSortBy = 'name' | 'country'
-
-export interface WineListOptions extends ListOptions {
-  sortBy?: WineSortBy
-}
+export type WineListOptions = ListOptions
 
 export interface WineService {
   list(options?: WineListOptions): Promise<Wine[]>
@@ -38,7 +34,7 @@ export interface WineService {
   setActive(id: string, active: boolean): Promise<Wine>
   /** Permanently removes a wine that has never appeared on any invoice. Throws if it has purchase history - deactivate instead. */
   delete(id: string): Promise<void>
-  getBalances(options?: { sortBy?: WineSortBy }): Promise<WineBalance[]>
+  getBalances(): Promise<WineBalance[]>
   getPurchaseHistory(id: string): Promise<PurchaseHistoryEntry[]>
 }
 

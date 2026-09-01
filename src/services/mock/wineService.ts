@@ -4,15 +4,8 @@ import { createId } from './ids'
 import type { MockStore } from './store'
 import { delay } from './delay'
 
-function compareWines(a: Wine, b: Wine, sortBy: WineListOptions['sortBy']): number {
-  if (sortBy === 'country') {
-    return (a.country ?? '').localeCompare(b.country ?? '') || a.name.localeCompare(b.name)
-  }
+function compareWines(a: Wine, b: Wine): number {
   return a.name.localeCompare(b.name)
-}
-
-function sortWines(wines: Wine[], sortBy: WineListOptions['sortBy']): Wine[] {
-  return [...wines].sort((a, b) => compareWines(a, b, sortBy))
 }
 
 export function createMockWineService(store: MockStore, latencyMs: number): WineService {
@@ -29,7 +22,7 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
           results = results.filter((wine) => wine.name.toLowerCase().includes(query))
         }
       }
-      return sortWines(results, options?.sortBy)
+      return [...results].sort(compareWines)
     },
 
     async get(id: string): Promise<Wine | null> {
@@ -86,7 +79,7 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
       store.deleteWine(id)
     },
 
-    async getBalances(options?: { sortBy?: WineListOptions['sortBy'] }): Promise<WineBalance[]> {
+    async getBalances(): Promise<WineBalance[]> {
       await delay(latencyMs)
       const balances: WineBalance[] = store.wines
         .filter((wine) => wine.active)
@@ -98,7 +91,7 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
             .reduce((sum, line) => sum + line.quantity, 0)
           return { wine, balanceInBottles }
         })
-      return balances.sort((a, b) => compareWines(a.wine, b.wine, options?.sortBy))
+      return balances.sort((a, b) => compareWines(a.wine, b.wine))
     },
 
     async getPurchaseHistory(id: string): Promise<PurchaseHistoryEntry[]> {

@@ -359,21 +359,6 @@ table {
   background: var(--bg-subtle);
 }
 
-.data-table tbody tr.data-table__group-row td {
-  padding-top: 16px;
-  padding-bottom: 4px;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-bottom: none;
-}
-
-.data-table tbody tr.data-table__group-row:hover {
-  background: none;
-}
-
 .data-table tbody tr.data-table__row--clickable {
   cursor: pointer;
 }

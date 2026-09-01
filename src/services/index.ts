@@ -21,5 +21,4 @@ export type {
   VendorService,
   WineListOptions,
   WineService,
-  WineSortBy,
 } from './types'
