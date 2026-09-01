@@ -1,11 +1,13 @@
 # Supabase Backend Plan
 
-**Status: migration applied, code wired, app still running on the mock.**
-Schema, RLS, Storage buckets, demo user, and seed data are all live (§9,
-§10). `src/services/index.ts` picks Supabase only behind
-`VITE_USE_SUPABASE="true"`, not yet set - see §9 item 8. Started as a
-plan-first document; kept as the running log of what's actually been done
-and verified, not just proposed.
+**Status: live.** The app runs on the real Supabase backend end-to-end -
+migration applied, RLS/Auth/Storage verified, seed data in place, and the
+full upload → extract → match → approve → balance flow confirmed working
+against the live project (§9). `VITE_USE_SUPABASE=true` is persisted in
+`.env`. Remaining open item: §7's OpenAI-key-exposure tradeoff was
+explicitly accepted, not fixed - revisit if this ships beyond local/Vercel
+personal use. Started as a plan-first document; kept as the running log of
+what's actually been done and verified, not just proposed.
 
 ## 0. What I checked first
 
@@ -293,10 +295,16 @@ migrations) — not required to run the app itself:
    in `wine_wines`/`wine_vendors`, matching the mock exactly.
 10. (Recommended, §7 above) Move OpenAI extraction into an Edge Function -
     skipped per the decision below, revisit if this changes.
-11. Manual smoke test of the full flow against the real backend: upload →
-    extract → match → approve → balance updates. **Not done yet** - the app
-    is still running on the mock (`VITE_USE_SUPABASE` not yet set to
-    `"true"`); this is the last remaining step.
+11. ~~Manual smoke test of the full flow against the real backend~~ — done.
+    `VITE_USE_SUPABASE=true` is now persisted in `.env` (it wasn't the first
+    time - it was only set as a shell var for one `npm run dev` invocation,
+    which is why a later restart appeared to silently fall back to
+    mock/empty). Full flow verified end-to-end via Playwright against the
+    live project: login → upload a PDF → row lands `processing` → confirmed
+    it transitions to `not_approved` on its own → manually resolved the
+    vendor match → Approve → confirmed directly in `wine_invoices` that
+    `status: "approved"`, `approved_at` is set, and `vendor_id` is correctly
+    linked. Test invoice + its Storage file deleted afterward.
 
 **Migration: applied.** All six `wine_*` tables and both Storage buckets
 confirmed present via read-only checks. RLS confirmed working correctly:
