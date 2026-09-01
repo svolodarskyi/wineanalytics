@@ -78,7 +78,7 @@ describe('InvoiceReviewPage', () => {
     for (const row of rows) {
       await user.click(within(row).getByRole('button', { name: /select wine/i }))
       await user.click(within(row).getByLabelText('Search wines'))
-      await user.click(within(row).getByRole('button', { name: wine.name }))
+      await user.click(screen.getByRole('button', { name: wine.name }))
     }
 
     await waitFor(() => expect(screen.getByRole('button', { name: /approve/i })).toBeEnabled())
@@ -118,9 +118,9 @@ describe('InvoiceReviewPage', () => {
     const row = screen.getAllByRole('row').find((r) => within(r).queryByText(/select wine/i)) as HTMLElement
     await user.click(within(row).getByRole('button', { name: /select wine/i }))
     await user.click(within(row).getByLabelText('Search wines'))
-    expect(within(row).getByText(/no wines yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/no wines yet/i)).toBeInTheDocument()
     await user.type(within(row).getByLabelText('Search wines'), 'Brand New Wine')
-    await user.click(within(row).getByRole('button', { name: /add "brand new wine" as a new wine/i }))
+    await user.click(screen.getByRole('button', { name: /add "brand new wine" as a new wine/i }))
     await within(row).findByText('Brand New Wine')
 
     const createdWine = (await testServicesState.current.wines.list()).find((w) => w.name === 'Brand New Wine')
