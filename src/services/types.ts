@@ -48,10 +48,8 @@ export interface VendorService {
   delete(id: string): Promise<void>
 }
 
-export type InvoiceSortBy = 'date' | 'vendor'
-
 export interface InvoiceService {
-  list(options?: { status?: InvoiceStatus | 'all'; sortBy?: InvoiceSortBy }): Promise<Invoice[]>
+  list(options?: { status?: InvoiceStatus | 'all' }): Promise<Invoice[]>
   get(id: string): Promise<Invoice | null>
   /** Uploads a document and kicks off OCR + vendor/SKU matching in the background. */
   upload(input: { fileName: string; fileType: 'image' | 'pdf'; fileDataUrl: string }): Promise<Invoice>

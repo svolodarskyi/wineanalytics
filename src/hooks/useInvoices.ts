@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient, type Query } from '@tanstack/react-query'
-import { services, type InvoiceSortBy } from '../services'
+import { services } from '../services'
 import type { Invoice, InvoiceStatus } from '../types'
 import { queryKeys } from './queryKeys'
 
 const PROCESSING_POLL_MS = 1000
 
-export function useInvoices(status?: InvoiceStatus | 'all', sortBy?: InvoiceSortBy) {
+export function useInvoices(status?: InvoiceStatus | 'all') {
   return useQuery({
-    queryKey: queryKeys.invoices(status, sortBy),
-    queryFn: () => services.invoices.list({ status, sortBy }),
+    queryKey: queryKeys.invoices(status),
+    queryFn: () => services.invoices.list({ status }),
     refetchInterval: (query: Query<Invoice[]>) =>
       query.state.data?.some((invoice) => invoice.status === 'processing') ? PROCESSING_POLL_MS : false,
   })

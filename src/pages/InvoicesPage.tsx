@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FileDropzone } from '../components/FileDropzone'
 import { useInvoices, useUploadInvoice } from '../hooks/useInvoices'
-import type { InvoiceSortBy } from '../services'
 import type { InvoiceStatus } from '../types'
 import { formatCurrency, formatDate } from '../utils/format'
 
@@ -10,8 +9,7 @@ type Tab = Extract<InvoiceStatus, 'not_approved' | 'approved'>
 
 export function InvoicesPage() {
   const [tab, setTab] = useState<Tab>('approved')
-  const [sortBy, setSortBy] = useState<InvoiceSortBy>('date')
-  const { data: invoices, isLoading, error } = useInvoices(tab, sortBy)
+  const { data: invoices, isLoading, error } = useInvoices(tab)
   // Fetched regardless of the active tab so the "Not Approved" count badge
   // stays visible and up to date even while viewing Approved invoices.
   const { data: notApprovedInvoices } = useInvoices('not_approved')
@@ -48,13 +46,6 @@ export function InvoicesPage() {
           Not Approved
           {notApprovedCount > 0 && <span className="tab-count-badge">{notApprovedCount}</span>}
         </button>
-      </div>
-
-      <div className="inline-form">
-        <select aria-label="Sort by" value={sortBy} onChange={(event) => setSortBy(event.target.value as InvoiceSortBy)}>
-          <option value="date">Sort by date</option>
-          <option value="vendor">Sort by vendor</option>
-        </select>
       </div>
 
       {error && <p className="notice notice--error">Could not load invoices.</p>}

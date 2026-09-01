@@ -1,5 +1,5 @@
 import type { InvoiceStatus } from '../types'
-import type { InvoiceSortBy, ListOptions } from '../services'
+import type { ListOptions } from '../services'
 
 export const queryKeys = {
   wines: (options?: ListOptions) => ['wines', options ?? {}] as const,
@@ -10,7 +10,6 @@ export const queryKeys = {
   vendors: (options?: ListOptions) => ['vendors', options ?? {}] as const,
   vendor: (id: string) => ['vendors', id] as const,
 
-  invoices: (status?: InvoiceStatus | 'all', sortBy?: InvoiceSortBy) =>
-    ['invoices', status ?? 'all', sortBy ?? 'date'] as const,
+  invoices: (status?: InvoiceStatus | 'all') => ['invoices', status ?? 'all'] as const,
   invoice: (id: string) => ['invoices', id] as const,
 }

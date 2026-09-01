@@ -39,21 +39,13 @@ describe('mock invoice service', () => {
     expect(processed.extracted.vendorMatch.status === 'suggested' || processed.lineItems.some((l) => l.skuMatch.status === 'suggested')).toBe(true)
   })
 
-  it('sorts by vendor name (resolved, not raw extracted text) when requested', async () => {
+  it('always lists invoices most-recently-uploaded first', async () => {
     services = createMockServices({ latencyMs: 0, processingDelayMs: PROCESSING_DELAY, seed: false })
-    const zetaVendor = await services.vendors.create({ name: 'Zeta Vendor' })
-    const alphaVendor = await services.vendors.create({ name: 'Alpha Vendor' })
-
     const first = await services.invoices.upload(SAMPLE_FILE)
-    await waitForProcessing(services, first.id)
-    await services.invoices.selectVendorMatch(first.id, zetaVendor.id)
-
     const second = await services.invoices.upload(SAMPLE_FILE)
-    await waitForProcessing(services, second.id)
-    await services.invoices.selectVendorMatch(second.id, alphaVendor.id)
 
-    const sorted = await services.invoices.list({ sortBy: 'vendor' })
-    expect(sorted.map((invoice) => invoice.id)).toEqual([second.id, first.id])
+    const listed = await services.invoices.list()
+    expect(listed.map((invoice) => invoice.id)).toEqual([second.id, first.id])
   })
 
   describe('with no master data to match against (deterministic unresolved matches)', () => {

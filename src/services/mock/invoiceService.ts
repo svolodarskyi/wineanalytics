@@ -1,5 +1,5 @@
 import type { Invoice, InvoiceStatus } from '../../types'
-import type { InvoiceSortBy, InvoiceService } from '../types'
+import type { InvoiceService } from '../types'
 import { delay } from './delay'
 import type { MockStore } from './store'
 
@@ -18,26 +18,14 @@ function requireInvoice(store: MockStore, id: string): Invoice {
 export function createMockInvoiceService(store: MockStore, options: MockInvoiceServiceOptions): InvoiceService {
   const { latencyMs, processingDelayMs } = options
 
-  function vendorNameFor(invoice: Invoice): string {
-    const vendor = invoice.extracted.vendorMatch.vendorId ? store.findVendor(invoice.extracted.vendorMatch.vendorId) : undefined
-    return vendor?.name ?? invoice.extracted.vendorMatch.vendorNameRaw
-  }
-
-  function sortInvoices(invoices: Invoice[], sortBy: InvoiceSortBy | undefined): Invoice[] {
-    if (sortBy === 'vendor') {
-      return [...invoices].sort((a, b) => vendorNameFor(a).localeCompare(vendorNameFor(b)))
-    }
-    return [...invoices].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
-  }
-
   return {
-    async list(options?: { status?: InvoiceStatus | 'all'; sortBy?: InvoiceSortBy }): Promise<Invoice[]> {
+    async list(options?: { status?: InvoiceStatus | 'all' }): Promise<Invoice[]> {
       await delay(latencyMs)
       let results = store.invoices
       if (options?.status && options.status !== 'all') {
         results = results.filter((invoice) => invoice.status === options.status)
       }
-      return sortInvoices(results, options?.sortBy)
+      return [...results].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt))
     },
 
     async get(id: string): Promise<Invoice | null> {

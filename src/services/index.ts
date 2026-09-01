@@ -15,7 +15,6 @@ export const services: Services = createMockServices()
 export type {
   AuthService,
   InvoiceService,
-  InvoiceSortBy,
   ListOptions,
   Services,
   VendorService,
