@@ -4,9 +4,11 @@ interface ModalProps {
   title: string
   onClose: () => void
   children: ReactNode
+  /** "large" is meant for content like a document preview that needs more room than a form. */
+  size?: 'default' | 'large'
 }
 
-export function Modal({ title, onClose, children }: ModalProps) {
+export function Modal({ title, onClose, children, size = 'default' }: ModalProps) {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') onClose()
@@ -25,7 +27,13 @@ export function Modal({ title, onClose, children }: ModalProps) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+      <div
+        className={size === 'large' ? 'modal modal--large' : 'modal'}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal__header">
           <h2>{title}</h2>
           <button type="button" className="modal__close" onClick={onClose} aria-label={`Close ${title}`}>

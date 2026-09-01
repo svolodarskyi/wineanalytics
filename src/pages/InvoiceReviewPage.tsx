@@ -34,6 +34,8 @@ export function InvoiceReviewPage() {
   const createVendor = useCreateVendor()
 
   const [activePicker, setActivePicker] = useState<ActivePicker>(null)
+  const [isDocOpen, setIsDocOpen] = useState(false)
+  const [isImageZoomed, setIsImageZoomed] = useState(false)
 
   const vendorName = useMemo(() => {
     const id = invoice?.extracted.vendorMatch.vendorId
@@ -94,12 +96,46 @@ export function InvoiceReviewPage() {
       <div className="two-col">
         <div className="card">
           <h2>Original document</h2>
-          {invoice.fileType === 'image' ? (
-            <img src={invoice.fileDataUrl} alt={invoice.fileName} className="invoice-doc-preview" />
-          ) : (
-            <iframe title={invoice.fileName} src={invoice.fileDataUrl} className="invoice-doc-preview" />
-          )}
+          <div className="invoice-doc-preview-wrap">
+            {invoice.fileType === 'image' ? (
+              <img src={invoice.fileDataUrl} alt={invoice.fileName} className="invoice-doc-preview" />
+            ) : (
+              <iframe title={invoice.fileName} src={invoice.fileDataUrl} className="invoice-doc-preview" />
+            )}
+            <button
+              type="button"
+              className="invoice-doc-preview-overlay"
+              onClick={() => setIsDocOpen(true)}
+              aria-label="Zoom original document"
+            >
+              Click to zoom
+            </button>
+          </div>
         </div>
+
+        {isDocOpen && (
+          <Modal
+            title={invoice.fileName}
+            size="large"
+            onClose={() => {
+              setIsDocOpen(false)
+              setIsImageZoomed(false)
+            }}
+          >
+            {invoice.fileType === 'image' ? (
+              <div className="doc-zoom">
+                <img
+                  src={invoice.fileDataUrl}
+                  alt={invoice.fileName}
+                  className={isImageZoomed ? 'doc-zoom__img doc-zoom__img--zoomed' : 'doc-zoom__img'}
+                  onClick={() => setIsImageZoomed((z) => !z)}
+                />
+              </div>
+            ) : (
+              <iframe title={invoice.fileName} src={invoice.fileDataUrl} className="doc-modal-frame" />
+            )}
+          </Modal>
+        )}
 
         <div className="card">
           <h2>Extracted information</h2>
