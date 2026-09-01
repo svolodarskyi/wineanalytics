@@ -13,11 +13,20 @@ import type {
 } from '../../types'
 import { createId } from './ids'
 import { nextSampleInvoice } from './sampleInvoices'
+import { seedInvoicesAndSales } from './seedActivity'
 import { seedPourSizes, seedVendors, seedWines } from './seedData'
 import { confidenceFromScore, findBestMatch } from './similarity'
 
 export interface MockStoreOptions {
   seed?: boolean
+  /**
+   * Also populates a few months of approved invoices and manual sales
+   * against the seeded master data, so there's something to build inventory
+   * and sales analytics against. Off by default - several tests rely on a
+   * freshly-seeded store having empty invoices/sales, and this is purely a
+   * demo/dev-server enhancement (see src/services/index.ts).
+   */
+  seedActivity?: boolean
 }
 
 /**
@@ -40,6 +49,13 @@ export class MockStore {
     this.wines = seed ? seedWines() : []
     this.vendors = seed ? seedVendors() : []
     this.pourSizes = seed ? seedPourSizes() : []
+
+    if (seed && options.seedActivity) {
+      const { invoices, sales, alertThresholds } = seedInvoicesAndSales(this.wines, this.vendors, this.pourSizes)
+      this.invoices = invoices
+      this.sales = sales
+      this.alertThresholds = alertThresholds
+    }
   }
 
   findWine(id: string): Wine | undefined {

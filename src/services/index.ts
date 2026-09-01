@@ -16,7 +16,9 @@ import type { Services } from './types'
  */
 const useSupabase = isSupabaseConfigured && import.meta.env.VITE_USE_SUPABASE === 'true'
 
-export const services: Services = useSupabase ? createSupabaseServices() : createMockServices()
+export const services: Services = useSupabase
+  ? createSupabaseServices()
+  : createMockServices({ seedActivity: true })
 
 export type {
   AlertService,
