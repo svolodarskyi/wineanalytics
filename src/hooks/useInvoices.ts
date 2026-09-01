@@ -98,3 +98,11 @@ export function useApproveInvoice() {
     },
   })
 }
+
+export function useDiscardInvoice() {
+  const invalidate = useInvalidateInvoices()
+  return useMutation({
+    mutationFn: (invoiceId: string) => services.invoices.discard(invoiceId),
+    onSuccess: (_data, invoiceId) => invalidate(invoiceId),
+  })
+}

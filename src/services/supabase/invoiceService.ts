@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { confidenceFromScore, findBestMatch } from '../mock/similarity'
 import type { AdditionalCharge, Confidence, Invoice, InvoiceStatus, MatchStatus, WineCategory } from '../../types'
 import type { InvoiceService, OpenAiExtractedLine, OpenAiService } from '../types'
-import { resolveSignedUrl, uploadDataUrl } from './storage'
+import { removeObject, resolveSignedUrl, uploadDataUrl } from './storage'
 
 const INVOICES_BUCKET = 'wine-invoices'
 const SELECT_FULL = '*, wine_invoice_line_items(*), wine_invoice_additional_charges(*)'
@@ -336,6 +336,22 @@ export function createSupabaseInvoiceService(supabase: SupabaseClient, openai: O
       throwIfError(lineError)
 
       return fetchInvoice(supabase, invoiceId)
+    },
+
+    async discard(invoiceId: string): Promise<void> {
+      const { data, error } = await supabase.from('wine_invoices').select('status, file_path').eq('id', invoiceId).maybeSingle()
+      throwIfError(error)
+      if (!data) throw new Error('Invoice not found.')
+      const row = data as { status: InvoiceStatus; file_path: string | null }
+      if (row.status === 'approved') {
+        throw new Error('Approved invoices cannot be discarded.')
+      }
+
+      // wine_invoice_line_items and wine_invoice_additional_charges cascade-delete with the invoice row.
+      const { error: deleteError } = await supabase.from('wine_invoices').delete().eq('id', invoiceId)
+      throwIfError(deleteError)
+
+      await removeObject(supabase, INVOICES_BUCKET, row.file_path)
     },
   }
 }

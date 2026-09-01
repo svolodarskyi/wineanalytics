@@ -176,6 +176,40 @@ describe('InvoiceReviewPage', () => {
     expect(screen.getByRole('button', { name: /add "existing vendor" as a new vendor/i })).toBeInTheDocument()
   })
 
+  it('discards a not-approved invoice after confirmation and navigates away', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    resetTestServices({ seed: false })
+    const invoice = await uploadAndWaitForProcessing()
+
+    renderWithProviders(<InvoiceReviewPage />, {
+      route: `/invoices/${invoice.id}`,
+      path: '/invoices/:invoiceId',
+    })
+
+    await user.click(await screen.findByRole('button', { name: /^discard$/i }))
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^discard$/i })).not.toBeInTheDocument())
+    expect(await testServicesState.current.invoices.get(invoice.id)).toBeNull()
+  })
+
+  it('does not discard when the confirmation is declined', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    resetTestServices({ seed: false })
+    const invoice = await uploadAndWaitForProcessing()
+
+    renderWithProviders(<InvoiceReviewPage />, {
+      route: `/invoices/${invoice.id}`,
+      path: '/invoices/:invoiceId',
+    })
+
+    await user.click(await screen.findByRole('button', { name: /^discard$/i }))
+
+    expect(screen.getByRole('button', { name: /^discard$/i })).toBeInTheDocument()
+    expect(await testServicesState.current.invoices.get(invoice.id)).not.toBeNull()
+  })
+
   it('shows an error and stays not-approved if approval is attempted with unresolved matches', async () => {
     resetTestServices({ seed: false })
     const invoice = await uploadAndWaitForProcessing()

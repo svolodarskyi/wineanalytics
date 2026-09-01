@@ -171,5 +171,14 @@ export function createMockInvoiceService(
         ),
       }))
     },
+
+    async discard(invoiceId: string): Promise<void> {
+      await delay(latencyMs)
+      const invoice = requireInvoice(store, invoiceId)
+      if (invoice.status === 'approved') {
+        throw new Error('Approved invoices cannot be discarded.')
+      }
+      store.deleteInvoice(invoiceId)
+    },
   }
 }

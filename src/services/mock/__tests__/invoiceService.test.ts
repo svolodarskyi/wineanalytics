@@ -170,6 +170,41 @@ describe('mock invoice service', () => {
     })
   })
 
+  describe('discard', () => {
+    it('removes a processing invoice', async () => {
+      const invoice = await services.invoices.upload(SAMPLE_FILE)
+      await services.invoices.discard(invoice.id)
+      expect(await services.invoices.get(invoice.id)).toBeNull()
+    })
+
+    it('removes a not_approved invoice', async () => {
+      const invoice = await services.invoices.upload(SAMPLE_FILE)
+      await waitForProcessing(services, invoice.id)
+      await services.invoices.discard(invoice.id)
+      expect(await services.invoices.get(invoice.id)).toBeNull()
+      expect(await services.invoices.list()).not.toContainEqual(expect.objectContaining({ id: invoice.id }))
+    })
+
+    it('rejects discarding an approved invoice', async () => {
+      const invoice = await services.invoices.upload(SAMPLE_FILE)
+      const processed = await waitForProcessing(services, invoice.id)
+      const vendor = await services.vendors.create({ name: 'Discard Test Vendor' })
+      await services.invoices.selectVendorMatch(invoice.id, vendor.id)
+      const wine = await services.wines.create({ name: 'Discard Test Wine' })
+      for (const line of processed.lineItems) {
+        await services.invoices.selectSkuMatch(invoice.id, line.id, wine.id)
+      }
+      await services.invoices.approve(invoice.id)
+
+      await expect(services.invoices.discard(invoice.id)).rejects.toThrow(/cannot be discarded/i)
+      expect(await services.invoices.get(invoice.id)).not.toBeNull()
+    })
+
+    it('rejects an unknown invoice id', async () => {
+      await expect(services.invoices.discard('missing-invoice')).rejects.toThrow(/not found/i)
+    })
+  })
+
   it('every mutating call returns a new object, never the previous reference', async () => {
     // Regression test: the store used to mutate invoices in place, which made
     // React Query think nothing had changed and the UI never re-rendered.

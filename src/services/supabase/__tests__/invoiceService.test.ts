@@ -197,4 +197,42 @@ describe('supabase invoice service', () => {
       expect(from).toHaveBeenCalledTimes(1)
     })
   })
+
+  describe('discard', () => {
+    it('deletes the row and removes its stored file for a not_approved invoice', async () => {
+      const from = routedSupabaseFrom({
+        wine_invoices: [{ data: { status: 'not_approved', file_path: 'inv1.pdf' } }, { error: null }],
+      })
+      const storage = fakeStorage()
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from, storage), noopOpenAi())
+
+      await invoices.discard('inv1')
+
+      const deleteBuilder = from.mock.results[1].value
+      expect(deleteBuilder.delete).toHaveBeenCalled()
+      expect(deleteBuilder.eq).toHaveBeenCalledWith('id', 'inv1')
+      expect(storage.bucketApi.remove).toHaveBeenCalledWith(['inv1.pdf'])
+    })
+
+    it('deletes a processing invoice too', async () => {
+      const from = routedSupabaseFrom({
+        wine_invoices: [{ data: { status: 'processing', file_path: 'inv1.pdf' } }, { error: null }],
+      })
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
+      await expect(invoices.discard('inv1')).resolves.toBeUndefined()
+    })
+
+    it('rejects discarding an approved invoice, without deleting', async () => {
+      const from = routedSupabaseFrom({ wine_invoices: [{ data: { status: 'approved', file_path: 'inv1.pdf' } }] })
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
+      await expect(invoices.discard('inv1')).rejects.toThrow(/cannot be discarded/i)
+      expect(from).toHaveBeenCalledTimes(1)
+    })
+
+    it('rejects an unknown invoice id', async () => {
+      const from = routedSupabaseFrom({ wine_invoices: [{ data: null }] })
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
+      await expect(invoices.discard('missing')).rejects.toThrow(/not found/i)
+    })
+  })
 })

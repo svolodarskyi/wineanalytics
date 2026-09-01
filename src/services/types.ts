@@ -92,6 +92,8 @@ export interface InvoiceService {
   updateInvoiceDate(invoiceId: string, invoiceDate: string | null): Promise<Invoice>
   /** Approves the invoice, folding its line items into wine balances. */
   approve(invoiceId: string): Promise<Invoice>
+  /** Permanently removes an invoice that was never approved - a bad or unwanted upload. Throws if the invoice is already approved; unapprove isn't supported since that would silently change wine balances. */
+  discard(invoiceId: string): Promise<void>
 }
 
 export interface AuthService {

@@ -138,6 +138,12 @@ export class MockStore {
     this.vendors.splice(index, 1)
   }
 
+  deleteInvoice(id: string): void {
+    const index = this.invoices.findIndex((invoice) => invoice.id === id)
+    if (index === -1) throw new Error('Invoice not found.')
+    this.invoices.splice(index, 1)
+  }
+
   deletePourSize(id: string): void {
     const index = this.pourSizes.findIndex((pourSize) => pourSize.id === id)
     if (index === -1) throw new Error('Pour size not found.')

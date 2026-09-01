@@ -8,6 +8,7 @@ import {
   useApproveInvoice,
   useConfirmSkuMatch,
   useConfirmVendorMatch,
+  useDiscardInvoice,
   useInvoice,
   useSelectSkuMatch,
   useSelectVendorMatch,
@@ -32,6 +33,7 @@ export function InvoiceReviewPage() {
   const confirmSkuMatch = useConfirmSkuMatch()
   const selectSkuMatch = useSelectSkuMatch()
   const approveInvoice = useApproveInvoice()
+  const discardInvoice = useDiscardInvoice()
   const createVendor = useCreateVendor()
   const updateInvoiceDate = useUpdateInvoiceDate()
 
@@ -61,6 +63,12 @@ export function InvoiceReviewPage() {
   const allLinesResolved = invoice.lineItems.every((line) => line.skuMatch.wineId)
   const canApprove = !isProcessing && !isApproved && Boolean(vendorMatch.vendorId) && allLinesResolved
 
+  function handleDiscard() {
+    if (!invoiceId) return
+    if (!window.confirm(`Discard "${invoice!.fileName}"? This cannot be undone.`)) return
+    discardInvoice.mutate(invoiceId, { onSuccess: () => navigate('/invoices') })
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -72,26 +80,42 @@ export function InvoiceReviewPage() {
           <InvoiceStatusBadge status={invoice.status} />
         </div>
         {!isApproved && (
-          <button
-            type="button"
-            className="btn btn--primary"
-            disabled={!canApprove || approveInvoice.isPending}
-            onClick={() =>
-              invoiceId &&
-              approveInvoice.mutate(invoiceId, {
-                onSuccess: () => navigate('/invoices'),
-              })
-            }
-            title={!canApprove ? 'Resolve the vendor and every wine SKU match before approving.' : undefined}
-          >
-            {approveInvoice.isPending ? 'Approving...' : 'Approve'}
-          </button>
+          <div className="picker">
+            <button
+              type="button"
+              className="btn btn--danger"
+              disabled={discardInvoice.isPending}
+              onClick={handleDiscard}
+            >
+              {discardInvoice.isPending ? 'Discarding...' : 'Discard'}
+            </button>
+            <button
+              type="button"
+              className="btn btn--primary"
+              disabled={!canApprove || approveInvoice.isPending}
+              onClick={() =>
+                invoiceId &&
+                approveInvoice.mutate(invoiceId, {
+                  onSuccess: () => navigate('/invoices'),
+                })
+              }
+              title={!canApprove ? 'Resolve the vendor and every wine SKU match before approving.' : undefined}
+            >
+              {approveInvoice.isPending ? 'Approving...' : 'Approve'}
+            </button>
+          </div>
         )}
       </div>
 
       {approveInvoice.error && (
         <p className="notice notice--error">
           {approveInvoice.error instanceof Error ? approveInvoice.error.message : 'Could not approve invoice.'}
+        </p>
+      )}
+
+      {discardInvoice.error && (
+        <p className="notice notice--error">
+          {discardInvoice.error instanceof Error ? discardInvoice.error.message : 'Could not discard invoice.'}
         </p>
       )}
 
