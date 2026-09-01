@@ -114,6 +114,46 @@ describe('supabase invoice service', () => {
     )
   })
 
+  it('upload (image) logs a diagnostic instead of leaving the invoice silently stuck when writing line items fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const openai: OpenAiService = {
+      extractInvoice: vi.fn().mockResolvedValue({
+        vendorNameRaw: 'Acme Wine Co',
+        invoiceDate: '2026-01-15',
+        totalAmount: 50,
+        lines: [{ itemNameRaw: 'Test Wine', quantity: 2, unitPrice: 25, lineTotal: 50 }],
+        additionalCharges: [],
+      }),
+      listLogs: vi.fn(),
+    }
+    const from = routedSupabaseFrom({
+      wine_invoices: [{ data: { ...NEW_ROW, file_type: 'image' } }],
+      wine_vendors: [{ data: [] }],
+      wine_wines: [{ data: [] }],
+      wine_invoice_line_items: [{ error: { message: 'insert failed' } }],
+      wine_openai_logs: [{ error: null }],
+    })
+    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), openai)
+
+    await invoices.upload({ fileName: 'invoice.jpg', fileType: 'image', fileDataUrl: 'data:image/jpeg;base64,AA==' })
+    await flushAsync()
+
+    expect(consoleError).toHaveBeenCalled()
+    const logsBuilder = from.mock.results[4].value
+    expect(logsBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invoice_id: expect.any(String),
+        model: 'db-write',
+        error: expect.stringContaining('insert failed'),
+      }),
+    )
+    // The invoice row was only ever inserted, never updated - it's left in "processing" rather than a half-done state.
+    const invoiceTableCalls = from.mock.calls.filter((call) => call[0] === 'wine_invoices').length
+    expect(invoiceTableCalls).toBe(1)
+
+    consoleError.mockRestore()
+  })
+
   it('selectVendorMatch maps a foreign-key violation to "Vendor not found."', async () => {
     const from = routedSupabaseFrom({
       wine_invoices: [{ error: { message: 'violates foreign key constraint', code: '23503' } }],

@@ -121,6 +121,29 @@ async function skuMatchFor(supabase: SupabaseClient, rawName: string): Promise<M
 }
 
 /**
+ * Best-effort: writes a diagnostic row into wine_openai_logs (model:
+ * "db-write") so a background-processing failure is visible somewhere
+ * queryable - Settings > AI Requests - instead of only an ephemeral
+ * console.error, which is easy to miss for a fire-and-forget failure no one
+ * was watching the devtools for when it happened.
+ */
+async function logProcessingFailure(supabase: SupabaseClient, invoiceId: string, fileName: string, err: unknown): Promise<void> {
+  const message = err instanceof Error ? err.message : String(err)
+  console.error(`Invoice ${invoiceId}: failed to complete background processing.`, err)
+  await supabase.from('wine_openai_logs').insert({
+    invoice_id: invoiceId,
+    model: 'db-write',
+    file_name: fileName,
+    response_json: null,
+    prompt_tokens: null,
+    completion_tokens: null,
+    total_tokens: null,
+    cost_usd: 0,
+    error: message,
+  })
+}
+
+/**
  * Fills in a `processing` invoice from an extraction result (real or the
  * empty fallback) and runs matching against current master data.
  *
@@ -130,10 +153,17 @@ async function skuMatchFor(supabase: SupabaseClient, rawName: string): Promise<M
  * flipping status first left a real window where a poll could land between
  * that update and the line-item insert and see a "done" invoice with no
  * line items, never polling again to pick them up.
+ *
+ * Never throws: any failure here previously surfaced as a silent, unhandled
+ * promise rejection, leaving the invoice permanently stuck in "processing"
+ * with no way to tell why. Failures are now logged (see logProcessingFailure)
+ * and just leave the invoice in whatever state it reached - discard it and
+ * retry the upload.
  */
 async function completeProcessingFromExtraction(
   supabase: SupabaseClient,
   invoiceId: string,
+  fileName: string,
   extraction: {
     vendorNameRaw: string
     invoiceDate: string | null
@@ -142,51 +172,54 @@ async function completeProcessingFromExtraction(
     additionalCharges: AdditionalCharge[]
   },
 ): Promise<void> {
-  const vendorMatch = await vendorMatchFor(supabase, extraction.vendorNameRaw)
+  try {
+    const vendorMatch = await vendorMatchFor(supabase, extraction.vendorNameRaw)
 
-  if (extraction.lines.length) {
-    const lineRows = await Promise.all(
-      extraction.lines.map(async (line) => {
-        const skuMatch = await skuMatchFor(supabase, line.itemNameRaw)
-        return {
-          invoice_id: invoiceId,
-          item_name_raw: line.itemNameRaw,
-          volume_ml_raw: line.volumeMlRaw,
-          category_raw: line.categoryRaw,
-          quantity: line.quantity,
-          unit_price: line.unitPrice,
-          line_total: line.lineTotal,
-          wine_id: skuMatch.id,
-          sku_confidence: skuMatch.confidence,
-          sku_match_status: skuMatch.status,
-        }
-      }),
-    )
-    const { error: lineError } = await supabase.from('wine_invoice_line_items').insert(lineRows)
-    // Best-effort background completion - if this fails there's nothing more to
-    // do here; the invoice just stays in "processing" for the user to retry.
-    if (lineError) return
+    if (extraction.lines.length) {
+      const lineRows = await Promise.all(
+        extraction.lines.map(async (line) => {
+          const skuMatch = await skuMatchFor(supabase, line.itemNameRaw)
+          return {
+            invoice_id: invoiceId,
+            item_name_raw: line.itemNameRaw,
+            volume_ml_raw: line.volumeMlRaw,
+            category_raw: line.categoryRaw,
+            quantity: line.quantity,
+            unit_price: line.unitPrice,
+            line_total: line.lineTotal,
+            wine_id: skuMatch.id,
+            sku_confidence: skuMatch.confidence,
+            sku_match_status: skuMatch.status,
+          }
+        }),
+      )
+      const { error: lineError } = await supabase.from('wine_invoice_line_items').insert(lineRows)
+      if (lineError) throw new Error(`Inserting line items failed: ${lineError.message}`)
+    }
+
+    if (extraction.additionalCharges.length) {
+      const { error: chargesError } = await supabase.from('wine_invoice_additional_charges').insert(
+        extraction.additionalCharges.map((c) => ({ invoice_id: invoiceId, description: c.description, amount: c.amount })),
+      )
+      if (chargesError) throw new Error(`Inserting additional charges failed: ${chargesError.message}`)
+    }
+
+    const { error: updateError } = await supabase
+      .from('wine_invoices')
+      .update({
+        status: 'not_approved',
+        invoice_date: extraction.invoiceDate,
+        total_amount: extraction.totalAmount,
+        vendor_name_raw: extraction.vendorNameRaw,
+        vendor_id: vendorMatch.id,
+        vendor_confidence: vendorMatch.confidence,
+        vendor_match_status: vendorMatch.status,
+      })
+      .eq('id', invoiceId)
+    if (updateError) throw new Error(`Updating invoice failed: ${updateError.message}`)
+  } catch (err) {
+    await logProcessingFailure(supabase, invoiceId, fileName, err)
   }
-
-  if (extraction.additionalCharges.length) {
-    const { error: chargesError } = await supabase.from('wine_invoice_additional_charges').insert(
-      extraction.additionalCharges.map((c) => ({ invoice_id: invoiceId, description: c.description, amount: c.amount })),
-    )
-    if (chargesError) return
-  }
-
-  await supabase
-    .from('wine_invoices')
-    .update({
-      status: 'not_approved',
-      invoice_date: extraction.invoiceDate,
-      total_amount: extraction.totalAmount,
-      vendor_name_raw: extraction.vendorNameRaw,
-      vendor_id: vendorMatch.id,
-      vendor_confidence: vendorMatch.confidence,
-      vendor_match_status: vendorMatch.status,
-    })
-    .eq('id', invoiceId)
 }
 
 const EMPTY_EXTRACTION = { vendorNameRaw: '', invoiceDate: null, totalAmount: 0, lines: [], additionalCharges: [] }
@@ -233,16 +266,17 @@ export function createSupabaseInvoiceService(supabase: SupabaseClient, openai: O
         // Fire-and-forget: the review page polls while status is "processing".
         openai
           .extractInvoice({ fileName: input.fileName, imageDataUrl: input.fileDataUrl, invoiceId: id })
-          .then((extraction) => completeProcessingFromExtraction(supabase, id, extraction))
+          .then((extraction) => completeProcessingFromExtraction(supabase, id, input.fileName, extraction))
           .catch(() => {
-            // Failure is already captured in the OpenAI request log; leave the
-            // invoice fully unresolved so the user can still fill it in by hand.
-            void completeProcessingFromExtraction(supabase, id, EMPTY_EXTRACTION)
+            // The extraction call itself failed - already captured in the
+            // OpenAI request log. Leave the invoice fully unresolved so the
+            // user can still fill it in by hand.
+            void completeProcessingFromExtraction(supabase, id, input.fileName, EMPTY_EXTRACTION)
           })
       } else {
         // No real extraction path for PDFs yet (vision models need an image) -
         // land as fully unresolved rather than faking data or getting stuck.
-        void completeProcessingFromExtraction(supabase, id, EMPTY_EXTRACTION)
+        void completeProcessingFromExtraction(supabase, id, input.fileName, EMPTY_EXTRACTION)
       }
 
       return invoice
