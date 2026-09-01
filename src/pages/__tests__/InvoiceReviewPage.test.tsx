@@ -125,6 +125,26 @@ describe('InvoiceReviewPage', () => {
     expect(createdWine).toBeDefined()
   })
 
+  it('offers "+ Add new" even when the search already matches an existing vendor', async () => {
+    const user = userEvent.setup()
+    resetTestServices({ seed: false })
+    await testServicesState.current.vendors.create({ name: 'Existing Vendor' })
+    const invoice = await uploadAndWaitForProcessing()
+
+    renderWithProviders(<InvoiceReviewPage />, {
+      route: `/invoices/${invoice.id}`,
+      path: '/invoices/:invoiceId',
+    })
+
+    await user.click(await screen.findByRole('button', { name: /select vendor/i }))
+    await user.type(screen.getByLabelText('Search vendors'), 'Existing Vendor')
+
+    // The existing match is still selectable...
+    expect(screen.getByLabelText('Choose match')).toBeInTheDocument()
+    // ...but creating a new one with the same search text is also offered.
+    expect(screen.getByRole('button', { name: /add "existing vendor" as a new vendor/i })).toBeInTheDocument()
+  })
+
   it('shows an error and stays not-approved if approval is attempted with unresolved matches', async () => {
     resetTestServices({ seed: false })
     const invoice = await uploadAndWaitForProcessing()

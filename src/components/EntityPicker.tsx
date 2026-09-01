@@ -8,11 +8,11 @@ interface EntityPickerProps {
   searchLabel: string
   /** Singular noun used in create-new copy, e.g. "vendor" or "wine". */
   entityLabel: string
-  /** Creates a brand-new entity with this name. Only offered when nothing on the list matches the search. */
+  /** Creates a brand-new entity with this name. Offered any time the user has typed a name, whether or not it also matches something on the list. */
   onCreateNew?: (name: string) => Promise<{ id: string }>
 }
 
-/** Search-or-browse picker used to change a suggested vendor/SKU match, with a fallback to create a new entity when nothing matches. */
+/** Search-or-browse picker used to change a suggested vendor/SKU match, with a fallback to create a new entity at any time. */
 export function EntityPicker({
   items,
   onSelect,
@@ -92,17 +92,18 @@ export function EntityPicker({
       </div>
 
       {noMatches && (
+        <p className="page-header__meta">
+          {trimmedQuery
+            ? `No ${entityLabel} found matching "${trimmedQuery}".`
+            : `No ${entityLabel}s yet. Type a name to search or create one.`}
+        </p>
+      )}
+
+      {onCreateNew && trimmedQuery && (
         <div className="stack">
-          <p className="page-header__meta">
-            {trimmedQuery
-              ? `No ${entityLabel} found matching "${trimmedQuery}".`
-              : `No ${entityLabel}s yet. Type a name to search or create one.`}
-          </p>
-          {onCreateNew && trimmedQuery && (
-            <button type="button" className="btn btn--small btn--primary" disabled={isCreating} onClick={handleCreateNew}>
-              {isCreating ? 'Creating...' : `+ Add "${trimmedQuery}" as a new ${entityLabel}`}
-            </button>
-          )}
+          <button type="button" className="btn btn--small btn--primary" disabled={isCreating} onClick={handleCreateNew}>
+            {isCreating ? 'Creating...' : `+ Add "${trimmedQuery}" as a new ${entityLabel}`}
+          </button>
           {createError && <p className="notice notice--error">{createError}</p>}
         </div>
       )}
