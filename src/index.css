@@ -405,7 +405,8 @@ table {
   color: var(--warning);
 }
 .badge--low,
-.badge--unresolved {
+.badge--unresolved,
+.badge--error {
   background: var(--danger-bg);
   color: var(--danger);
 }
@@ -682,6 +683,28 @@ table {
   height: 80svh;
   border: none;
   border-radius: 8px;
+}
+
+.openai-log-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  display: block;
+}
+
+.json-view {
+  max-height: 60svh;
+  overflow: auto;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .invoice-doc-preview--pdf {

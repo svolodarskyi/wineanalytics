@@ -4,6 +4,7 @@ import { RequireAuth } from './components/RequireAuth'
 import { InvoiceReviewPage } from './pages/InvoiceReviewPage'
 import { InvoicesPage } from './pages/InvoicesPage'
 import { LoginPage } from './pages/LoginPage'
+import { SettingsOpenAiPage } from './pages/SettingsOpenAiPage'
 import { SettingsVendorsPage } from './pages/SettingsVendorsPage'
 import { SettingsWinesPage } from './pages/SettingsWinesPage'
 import { WineDetailPage } from './pages/WineDetailPage'
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="invoices/:invoiceId" element={<InvoiceReviewPage />} />
         <Route path="settings/wines" element={<SettingsWinesPage />} />
         <Route path="settings/vendors" element={<SettingsVendorsPage />} />
+        <Route path="settings/ai-requests" element={<SettingsOpenAiPage />} />
       </Route>
     </Routes>
   )

@@ -12,4 +12,6 @@ export const queryKeys = {
 
   invoices: (status?: InvoiceStatus | 'all') => ['invoices', status ?? 'all'] as const,
   invoice: (id: string) => ['invoices', id] as const,
+
+  openAiLogs: () => ['openai', 'logs'] as const,
 }

@@ -16,6 +16,8 @@ export type {
   AuthService,
   InvoiceService,
   ListOptions,
+  OpenAiExtractedLine,
+  OpenAiService,
   Services,
   VendorService,
   WineListOptions,

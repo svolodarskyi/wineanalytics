@@ -1,5 +1,5 @@
 import type { Invoice, InvoiceStatus } from '../../types'
-import type { InvoiceService } from '../types'
+import type { InvoiceService, OpenAiService } from '../types'
 import { delay } from './delay'
 import type { MockStore } from './store'
 
@@ -15,7 +15,11 @@ function requireInvoice(store: MockStore, id: string): Invoice {
   return invoice
 }
 
-export function createMockInvoiceService(store: MockStore, options: MockInvoiceServiceOptions): InvoiceService {
+export function createMockInvoiceService(
+  store: MockStore,
+  options: MockInvoiceServiceOptions,
+  openai: OpenAiService,
+): InvoiceService {
   const { latencyMs, processingDelayMs } = options
 
   return {
@@ -35,6 +39,29 @@ export function createMockInvoiceService(store: MockStore, options: MockInvoiceS
 
     async upload(input: { fileName: string; fileType: 'image' | 'pdf'; fileDataUrl: string }): Promise<Invoice> {
       await delay(latencyMs)
+
+      // Photos/scans go to OpenAI for real extraction. PDFs stay on the
+      // canned simulation for now - vision models need an image, not a PDF,
+      // and rendering PDFs to images client-side is a separate piece of work.
+      if (input.fileType === 'image') {
+        const invoice = store.createEmptyProcessingInvoice(input)
+        openai
+          .extractInvoice({ fileName: input.fileName, imageDataUrl: input.fileDataUrl })
+          .then((extraction) => store.completeProcessingFromExtraction(invoice.id, extraction))
+          .catch(() => {
+            // Failure is already captured in the OpenAI request log (see
+            // Settings > AI Requests); leave the invoice fully unresolved so
+            // the user can still fill it in by hand instead of getting stuck.
+            store.completeProcessingFromExtraction(invoice.id, {
+              vendorNameRaw: '',
+              invoiceDate: null,
+              totalAmount: 0,
+              lines: [],
+            })
+          })
+        return invoice
+      }
+
       const invoice = store.createProcessingInvoice(input)
       setTimeout(() => store.completeProcessing(invoice.id), processingDelayMs)
       return invoice

@@ -1,4 +1,4 @@
-import type { Invoice, InvoiceLineItem, Vendor, VendorMatch, Wine } from '../../types'
+import type { Invoice, InvoiceLineItem, OpenAiRequestLog, Vendor, VendorMatch, Wine } from '../../types'
 import { createId } from './ids'
 import { nextSampleInvoice } from './sampleInvoices'
 import { seedVendors, seedWines } from './seedData'
@@ -17,6 +17,7 @@ export class MockStore {
   wines: Wine[]
   vendors: Vendor[]
   invoices: Invoice[] = []
+  openAiLogs: OpenAiRequestLog[] = []
 
   constructor(options: MockStoreOptions = {}) {
     const seed = options.seed ?? true
@@ -162,5 +163,62 @@ export class MockStore {
         skuMatch: this.skuMatchFor(line.itemNameRaw),
       })),
     }))
+  }
+
+  /** Creates a new invoice in `processing` status with nothing extracted yet, for the real-OpenAI upload path. */
+  createEmptyProcessingInvoice(input: { fileName: string; fileType: 'image' | 'pdf'; fileDataUrl: string }): Invoice {
+    const invoice: Invoice = {
+      id: createId('invoice'),
+      fileName: input.fileName,
+      fileType: input.fileType,
+      fileDataUrl: input.fileDataUrl,
+      uploadedAt: new Date().toISOString(),
+      status: 'processing',
+      approvedAt: null,
+      extracted: {
+        invoiceDate: null,
+        totalAmount: null,
+        vendorMatch: { vendorNameRaw: '', vendorId: null, confidence: null, status: 'unresolved' },
+      },
+      lineItems: [],
+    }
+    this.invoices.unshift(invoice)
+    return invoice
+  }
+
+  /** Fills in a `processing` invoice from a real OpenAI extraction result and runs vendor/SKU matching against current master data. */
+  completeProcessingFromExtraction(
+    invoiceId: string,
+    extraction: {
+      vendorNameRaw: string
+      invoiceDate: string | null
+      totalAmount: number
+      lines: { itemNameRaw: string; quantity: number; unitPrice: number; lineTotal: number }[]
+    },
+  ): void {
+    const invoice = this.findInvoice(invoiceId)
+    if (!invoice || invoice.status !== 'processing') return
+
+    this.updateInvoice(invoiceId, (current) => ({
+      ...current,
+      status: 'not_approved',
+      extracted: {
+        invoiceDate: extraction.invoiceDate,
+        totalAmount: extraction.totalAmount,
+        vendorMatch: this.vendorMatchFor(extraction.vendorNameRaw),
+      },
+      lineItems: extraction.lines.map((line) => ({
+        id: createId('line'),
+        itemNameRaw: line.itemNameRaw,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        lineTotal: line.lineTotal,
+        skuMatch: this.skuMatchFor(line.itemNameRaw),
+      })),
+    }))
+  }
+
+  addOpenAiLog(entry: OpenAiRequestLog): void {
+    this.openAiLogs = [entry, ...this.openAiLogs]
   }
 }

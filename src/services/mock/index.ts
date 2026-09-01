@@ -1,6 +1,7 @@
 import type { Services } from '../types'
 import { createMockAuthService } from './authService'
 import { createMockInvoiceService } from './invoiceService'
+import { createOpenAiService } from './openAiService'
 import { MockStore, type MockStoreOptions } from './store'
 import { createMockVendorService } from './vendorService'
 import { createMockWineService } from './wineService'
@@ -20,12 +21,14 @@ export interface MockServicesOptions extends MockStoreOptions {
 export function createMockServices(options: MockServicesOptions = {}): Services {
   const { latencyMs = 250, processingDelayMs = 1200, ...storeOptions } = options
   const store = new MockStore(storeOptions)
+  const openai = createOpenAiService(store, latencyMs)
 
   return {
     auth: createMockAuthService(latencyMs),
     wines: createMockWineService(store, latencyMs),
     vendors: createMockVendorService(store, latencyMs),
-    invoices: createMockInvoiceService(store, { latencyMs, processingDelayMs }),
+    invoices: createMockInvoiceService(store, { latencyMs, processingDelayMs }, openai),
+    openai,
   }
 }
 

@@ -2,6 +2,7 @@ import type {
   AuthUser,
   Invoice,
   InvoiceStatus,
+  OpenAiRequestLog,
   PurchaseHistoryEntry,
   Vendor,
   Wine,
@@ -71,9 +72,28 @@ export interface AuthService {
   logout(): Promise<void>
 }
 
+export interface OpenAiExtractedLine {
+  itemNameRaw: string
+  quantity: number
+  unitPrice: number
+  lineTotal: number
+}
+
+export interface OpenAiService {
+  /** Sends an image to OpenAI for invoice-field extraction, logging the request/response/cost for the Settings debug page. */
+  extractInvoice(input: { fileName: string; imageDataUrl: string }): Promise<{
+    vendorNameRaw: string
+    invoiceDate: string | null
+    totalAmount: number
+    lines: OpenAiExtractedLine[]
+  }>
+  listLogs(): Promise<OpenAiRequestLog[]>
+}
+
 export interface Services {
   auth: AuthService
   wines: WineService
   vendors: VendorService
   invoices: InvoiceService
+  openai: OpenAiService
 }

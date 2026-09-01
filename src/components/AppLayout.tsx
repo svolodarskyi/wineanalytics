@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { to: '/invoices', label: 'Invoices', end: false },
   { to: '/settings/wines', label: 'Settings: Wines', end: false },
   { to: '/settings/vendors', label: 'Settings: Vendors', end: false },
+  { to: '/settings/ai-requests', label: 'Settings: AI Requests', end: false },
 ]
 
 export function AppLayout() {

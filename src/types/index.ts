@@ -80,3 +80,23 @@ export interface AuthUser {
   id: string
   email: string
 }
+
+export interface OpenAiUsage {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
+
+/** One logged call to OpenAI for invoice image parsing, kept for the Settings debug page. */
+export interface OpenAiRequestLog {
+  id: string
+  createdAt: string
+  model: string
+  fileName: string
+  imageDataUrl: string
+  /** Parsed JSON the model returned, or null if the call failed before a response was parsed. */
+  responseJson: unknown
+  usage: OpenAiUsage | null
+  costUsd: number
+  error: string | null
+}
