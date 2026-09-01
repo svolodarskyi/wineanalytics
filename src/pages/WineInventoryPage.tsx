@@ -30,7 +30,7 @@ export function WineInventoryPage() {
           <p className="empty-state">No wines yet. Add wines from Settings to get started.</p>
         )}
         {!!balances?.length && (
-          <table className="data-table data-table--fit">
+          <table className="data-table data-table--fit data-table--compact">
             <thead>
               <tr>
                 <th>Wine</th>
