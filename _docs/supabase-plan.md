@@ -1,8 +1,11 @@
 # Supabase Backend Plan
 
-Plan only — nothing below has been executed against the live project yet.
-No tables, buckets, or policies have been created. This is the proposal to
-review before I run anything.
+**Status: migration applied, code wired, app still running on the mock.**
+Schema, RLS, Storage buckets, demo user, and seed data are all live (§9,
+§10). `src/services/index.ts` picks Supabase only behind
+`VITE_USE_SUPABASE="true"`, not yet set - see §9 item 8. Started as a
+plan-first document; kept as the running log of what's actually been done
+and verified, not just proposed.
 
 ## 0. What I checked first
 
@@ -284,14 +287,22 @@ migrations) — not required to run the app itself:
    with real credentials configured, so this commit doesn't silently break
    the running app. Flip it once the migration (next item) is actually
    applied.
-9. Port `src/services/mock/seedData.ts`'s six wines / three vendors into the
-   real tables (a one-time seed script), so the app isn't empty on first
-   real run. **Not done yet.**
+9. ~~Port `src/services/mock/seedData.ts`'s six wines / three vendors into
+   the real tables~~ — done: `scripts/seed-supabase.mjs` (idempotent, checks
+   for existing rows before inserting). Verified: 6 wines, 3 vendors present
+   in `wine_wines`/`wine_vendors`, matching the mock exactly.
 10. (Recommended, §7 above) Move OpenAI extraction into an Edge Function -
     skipped per the decision below, revisit if this changes.
 11. Manual smoke test of the full flow against the real backend: upload →
-    extract → match → approve → balance updates. **Blocked on the
-    migration below.**
+    extract → match → approve → balance updates. **Not done yet** - the app
+    is still running on the mock (`VITE_USE_SUPABASE` not yet set to
+    `"true"`); this is the last remaining step.
+
+**Migration: applied.** All six `wine_*` tables and both Storage buckets
+confirmed present via read-only checks. RLS confirmed working correctly:
+an unauthenticated insert was rejected (`new row violates row-level
+security policy`), the same insert succeeded once signed in as the demo
+user, and the probe row was cleaned up afterward.
 
 **Demo user:** created via the Admin API (`sb_secret_...` key, run
 server-side only, never committed) - `demo@restaurant.com` / `password`,
