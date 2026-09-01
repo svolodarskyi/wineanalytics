@@ -6,10 +6,22 @@ interface EntityPickerProps {
   onCancel: () => void
   submitLabel?: string
   searchLabel: string
+  /** Singular noun used in create-new copy, e.g. "vendor" or "wine". */
+  entityLabel: string
+  /** Creates a brand-new entity with this name. Only offered when nothing on the list matches the search. */
+  onCreateNew?: (name: string) => Promise<{ id: string }>
 }
 
-/** Search-or-browse picker used to change a suggested vendor/SKU match. */
-export function EntityPicker({ items, onSelect, onCancel, submitLabel = 'Select', searchLabel }: EntityPickerProps) {
+/** Search-or-browse picker used to change a suggested vendor/SKU match, with a fallback to create a new entity when nothing matches. */
+export function EntityPicker({
+  items,
+  onSelect,
+  onCancel,
+  submitLabel = 'Select',
+  searchLabel,
+  entityLabel,
+  onCreateNew,
+}: EntityPickerProps) {
   const [query, setQuery] = useState('')
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -19,40 +31,81 @@ export function EntityPicker({ items, onSelect, onCancel, submitLabel = 'Select'
   const [selectedId, setSelectedId] = useState('')
   const effectiveSelectedId = filtered.some((item) => item.id === selectedId) ? selectedId : (filtered[0]?.id ?? '')
 
+  const [isCreating, setIsCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+
+  const trimmedQuery = query.trim()
+  const noMatches = filtered.length === 0
+
+  async function handleCreateNew() {
+    if (!onCreateNew || !trimmedQuery) return
+    setCreateError(null)
+    setIsCreating(true)
+    try {
+      const created = await onCreateNew(trimmedQuery)
+      onSelect(created.id)
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : `Could not create the ${entityLabel}.`)
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
   return (
-    <div className="picker">
-      <input
-        type="search"
-        className="search-input"
-        aria-label={searchLabel}
-        placeholder={searchLabel}
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
-      <select
-        aria-label="Choose match"
-        value={effectiveSelectedId}
-        onChange={(event) => setSelectedId(event.target.value)}
-        disabled={filtered.length === 0}
-      >
-        {filtered.length === 0 && <option value="">No matches</option>}
-        {filtered.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.name}
-          </option>
-        ))}
-      </select>
-      <button
-        type="button"
-        className="btn btn--small btn--primary"
-        disabled={!effectiveSelectedId}
-        onClick={() => onSelect(effectiveSelectedId)}
-      >
-        {submitLabel}
-      </button>
-      <button type="button" className="btn btn--small" onClick={onCancel}>
-        Cancel
-      </button>
+    <div className="stack">
+      <div className="picker">
+        <input
+          type="search"
+          className="search-input"
+          aria-label={searchLabel}
+          placeholder={searchLabel}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          autoFocus
+        />
+        {!noMatches && (
+          <>
+            <select
+              aria-label="Choose match"
+              value={effectiveSelectedId}
+              onChange={(event) => setSelectedId(event.target.value)}
+            >
+              {filtered.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="btn btn--small btn--primary"
+              disabled={!effectiveSelectedId}
+              onClick={() => onSelect(effectiveSelectedId)}
+            >
+              {submitLabel}
+            </button>
+          </>
+        )}
+        <button type="button" className="btn btn--small" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+
+      {noMatches && (
+        <div className="stack">
+          <p className="page-header__meta">
+            {trimmedQuery
+              ? `No ${entityLabel} found matching "${trimmedQuery}".`
+              : `No ${entityLabel}s yet. Type a name to search or create one.`}
+          </p>
+          {onCreateNew && trimmedQuery && (
+            <button type="button" className="btn btn--small btn--primary" disabled={isCreating} onClick={handleCreateNew}>
+              {isCreating ? 'Creating...' : `+ Add "${trimmedQuery}" as a new ${entityLabel}`}
+            </button>
+          )}
+          {createError && <p className="notice notice--error">{createError}</p>}
+        </div>
+      )}
     </div>
   )
 }

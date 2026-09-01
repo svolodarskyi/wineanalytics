@@ -92,6 +92,39 @@ describe('InvoiceReviewPage', () => {
     expect(stored?.status).toBe('approved')
   })
 
+  it('lets the user create a brand-new vendor and wine directly from the picker when nothing matches', async () => {
+    const user = userEvent.setup()
+    resetTestServices({ seed: false })
+    const invoice = await uploadAndWaitForProcessing()
+
+    renderWithProviders(<InvoiceReviewPage />, {
+      route: `/invoices/${invoice.id}`,
+      path: '/invoices/:invoiceId',
+    })
+
+    // No vendors exist at all yet, so the picker offers to create one.
+    await user.click(await screen.findByRole('button', { name: /select vendor/i }))
+    expect(screen.getByText(/no vendors yet/i)).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Search vendors'), 'Brand New Vendor')
+    await user.click(screen.getByRole('button', { name: /add "brand new vendor" as a new vendor/i }))
+    await screen.findByText('Brand New Vendor')
+    expect(screen.getAllByText('Resolved')[0]).toBeInTheDocument()
+
+    const createdVendor = (await testServicesState.current.vendors.list()).find((v) => v.name === 'Brand New Vendor')
+    expect(createdVendor).toBeDefined()
+
+    // Same flow for a wine SKU on the first line item.
+    const row = screen.getAllByRole('row').find((r) => within(r).queryByText(/select wine/i)) as HTMLElement
+    await user.click(within(row).getByRole('button', { name: /select wine/i }))
+    expect(within(row).getByText(/no wines yet/i)).toBeInTheDocument()
+    await user.type(within(row).getByLabelText('Search wines'), 'Brand New Wine')
+    await user.click(within(row).getByRole('button', { name: /add "brand new wine" as a new wine/i }))
+    await within(row).findByText('Brand New Wine')
+
+    const createdWine = (await testServicesState.current.wines.list()).find((w) => w.name === 'Brand New Wine')
+    expect(createdWine).toBeDefined()
+  })
+
   it('shows an error and stays not-approved if approval is attempted with unresolved matches', async () => {
     resetTestServices({ seed: false })
     const invoice = await uploadAndWaitForProcessing()

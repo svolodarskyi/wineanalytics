@@ -11,8 +11,8 @@ import {
   useSelectSkuMatch,
   useSelectVendorMatch,
 } from '../hooks/useInvoices'
-import { useVendors } from '../hooks/useVendors'
-import { useWines } from '../hooks/useWines'
+import { useCreateVendor, useVendors } from '../hooks/useVendors'
+import { useCreateWine, useWines } from '../hooks/useWines'
 import type { InvoiceLineItem } from '../types'
 import { formatCurrency, formatDate } from '../utils/format'
 
@@ -30,6 +30,7 @@ export function InvoiceReviewPage() {
   const confirmSkuMatch = useConfirmSkuMatch()
   const selectSkuMatch = useSelectSkuMatch()
   const approveInvoice = useApproveInvoice()
+  const createVendor = useCreateVendor()
 
   const [activePicker, setActivePicker] = useState<ActivePicker>(null)
 
@@ -136,6 +137,8 @@ export function InvoiceReviewPage() {
                 items={vendors ?? []}
                 searchLabel="Search vendors"
                 submitLabel="Set vendor"
+                entityLabel="vendor"
+                onCreateNew={(name) => createVendor.mutateAsync({ name })}
                 onCancel={() => setActivePicker(null)}
                 onSelect={(vendorId) => {
                   if (!invoiceId) return
@@ -229,6 +232,8 @@ function LineItemRow({
   onSelect: (wineId: string) => void
   isConfirmPending: boolean
 }) {
+  const createWine = useCreateWine()
+
   return (
     <tr>
       <td>{line.itemNameRaw}</td>
@@ -249,6 +254,8 @@ function LineItemRow({
               items={wines}
               searchLabel="Search wines"
               submitLabel="Set wine"
+              entityLabel="wine"
+              onCreateNew={(name) => createWine.mutateAsync({ name })}
               onCancel={onClosePicker}
               onSelect={onSelect}
             />
