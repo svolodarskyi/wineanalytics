@@ -21,6 +21,15 @@ This confirms the `wine_` prefix isn't optional cosmetics here — it's the
 only thing keeping this app's schema from colliding with the other one in
 the same project.
 
+**Update:** `.env` was later switched to a different project
+(`ufnofpnshvniyvpudylt`, not the `nrfddqvjtzqbinthtuyz` project checked
+above), using Supabase's newer publishable/secret key system. Root-schema
+introspection is locked to secret-key-only under that system, and only a
+publishable key is in `.env`, so the collision check above hasn't been
+re-run against this project. Keeping the `wine_` prefix regardless — costs
+nothing if the project turns out to be dedicated to this app, and protects
+against exactly the collision found above if it isn't.
+
 ## 1. Scope
 
 Per `_docs/specs.md`: single restaurant, Supabase Auth, no roles/multi-tenancy.
@@ -177,7 +186,7 @@ Storage buckets get an equivalent authenticated-only policy.
 ## 5. Auth — built, not yet wired in
 
 `src/services/supabase/client.ts` (lazy Supabase client, reads
-`VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`) and
+`VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY`) and
 `src/services/supabase/authService.ts` (wraps
 `signInWithPassword`/`getSession`/`signOut`, satisfies the existing
 `AuthService` interface) exist now, with tests (`@supabase/supabase-js`
@@ -203,7 +212,7 @@ New `src/services/supabase/` folder, one file per interface
 from `src/services/types.ts` — the same contract the mock already satisfies,
 so no other file in the app changes. `src/services/index.ts` picks between
 `createMockServices()` and a new `createSupabaseServices()` based on whether
-`VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` are set.
+`VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` are set.
 
 `src/services/openai/client.ts` (the extraction call) and the matching logic
 in `src/services/mock/similarity.ts` are backend-agnostic already — they
@@ -221,22 +230,22 @@ not part of this migration.
 
 ## 8. Environment variables
 
-Already in `.env` (server-only, keep it that way):
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_KEY` — **never expose this to the client.** It bypasses
-  RLS entirely. Server-side/Edge Function/admin-script use only.
+Already in `.env`, client-safe:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY` — the publishable key (Supabase's current
+  name for what used to be the "anon key"). This is what the browser
+  authenticates with; RLS is what keeps it safe.
 
-Still needed, not yet in `.env`:
-- `VITE_SUPABASE_URL` — same value as `SUPABASE_URL`, just re-exposed under
-  the `VITE_` prefix Vite requires for client code (same pattern already
-  used for `VITE_OPENAI_API_KEY`).
-- `VITE_SUPABASE_ANON_KEY` — the **anon/public** key, not the service key.
-  This is what the browser should actually authenticate with; RLS is what
-  keeps it safe. Grab it from Supabase dashboard → Project Settings → API.
+Not yet in `.env`, needed for server-side/admin scripts only (seeding,
+migrations) — not required to run the app itself:
+- `SUPABASE_URL` — same value as above, without the `VITE_` prefix.
+- `SUPABASE_SECRET_KEY` — the secret key (formerly "service_role key").
+  **Never expose this to the client.** Bypasses RLS entirely.
 
 ## 9. Rollout order
 
-1. Get the anon key into `.env` as `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`.
+1. ~~Get the publishable key into `.env`~~ — done (`VITE_SUPABASE_URL` /
+   `VITE_SUPABASE_PUBLISHABLE_KEY`).
 2. Run the schema + RLS SQL above (as a Supabase migration file, so it's
    tracked and repeatable, not a one-off dashboard edit).
 3. Create the two Storage buckets + their policies.
@@ -269,5 +278,7 @@ rather than bundling here.
 ## 10. Open questions before I touch anything
 
 - Confirm the `wine_` prefix and table names above read right, or adjust.
-- Where should the anon key come from — will you paste it in, or should I
-  walk through fetching it another way?
+- The DDL in §2 uses `for all using (auth.role() = 'authenticated')` for
+  RLS — that's written against the legacy JWT auth model. Worth confirming
+  this still applies as-is under the newer publishable/secret key system on
+  this project, or whether the RLS policy syntax needs to change.
