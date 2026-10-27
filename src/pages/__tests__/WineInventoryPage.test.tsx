@@ -23,7 +23,7 @@ describe('WineInventoryPage', () => {
     expect(balanceCells.length).toBeGreaterThan(0)
   })
 
-  it('shows a notice when invoices are waiting for approval', async () => {
+  it('shows a pending-review count when invoices are waiting for approval', async () => {
     const invoice = await testServicesState.current.invoices.upload({
       fileName: 'pending.pdf',
       fileType: 'pdf',
@@ -36,7 +36,8 @@ describe('WineInventoryPage', () => {
 
     renderWithProviders(<WineInventoryPage />)
 
-    expect(await screen.findByText(/waiting for approval/i)).toBeInTheDocument()
+    const label = await screen.findByText('Invoices Pending Review')
+    await waitFor(() => expect(label.closest('a')).toHaveTextContent('1'))
   })
 
   it('reflects an approved invoice as a nonzero balance', async () => {

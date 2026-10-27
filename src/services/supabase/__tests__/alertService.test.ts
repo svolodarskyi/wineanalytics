@@ -25,7 +25,7 @@ describe('supabase alert service', () => {
         wine_alert_thresholds: [
           { data: [{ id: 't1', wine_id: 'w1', min_bottles: 5, active: true, created_at: '2026-01-01T00:00:00.000Z', wine_wines: WINE_ROW }] },
         ],
-        wine_invoice_line_items: [{ data: [{ wine_id: 'w1', quantity: 2 }] }],
+        wine_invoice_line_items: [{ data: [{ wine_id: 'w1', quantity: 2, pack_size: 1 }] }],
         wine_sales: [{ data: [] }],
       })
       const alerts = createSupabaseAlertService(supabaseWith(from))
@@ -45,7 +45,7 @@ describe('supabase alert service', () => {
         wine_alert_thresholds: [
           { data: [{ id: 't1', wine_id: 'w1', min_bottles: 5, active: true, created_at: '2026-01-01T00:00:00.000Z', wine_wines: WINE_ROW }] },
         ],
-        wine_invoice_line_items: [{ data: [{ wine_id: 'w1', quantity: 10 }] }],
+        wine_invoice_line_items: [{ data: [{ wine_id: 'w1', quantity: 10, pack_size: 1 }] }],
         wine_sales: [{ data: [] }],
       })
       const alerts = createSupabaseAlertService(supabaseWith(from))
@@ -77,7 +77,7 @@ describe('supabase alert service', () => {
             ],
           },
         ],
-        wine_invoice_line_items: [{ data: [{ wine_id: 'w1', quantity: 2 }] }],
+        wine_invoice_line_items: [{ data: [{ wine_id: 'w1', quantity: 2, pack_size: 1 }] }],
         wine_sales: [{ data: [] }],
       })
       const alerts = createSupabaseAlertService(supabaseWith(from))

@@ -22,7 +22,7 @@ export function createSupabaseServices(): Services {
     auth: createSupabaseAuthService(supabase),
     wines: createSupabaseWineService(supabase),
     vendors: createSupabaseVendorService(supabase),
-    invoices: createSupabaseInvoiceService(supabase, openai),
+    invoices: createSupabaseInvoiceService(supabase),
     openai,
     alerts: createSupabaseAlertService(supabase),
     pourSizes: createSupabasePourSizeService(supabase),

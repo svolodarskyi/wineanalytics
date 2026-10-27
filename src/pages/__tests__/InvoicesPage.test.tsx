@@ -34,12 +34,32 @@ describe('InvoicesPage', () => {
     const file = new File(['%PDF-1.4 fake'], 'invoice.pdf', { type: 'application/pdf' })
     await user.upload(screen.getByLabelText('Upload invoice'), file)
 
-    await waitFor(
-      () => expect(screen.queryByText(/no invoices here yet/i)).not.toBeInTheDocument(),
-      { timeout: 5000 },
-    )
+    // "No invoices here yet" disappears as soon as the processing row merges in
+    // (see below) - wait for it to actually finish processing, not just appear.
+    await waitFor(async () => {
+      const invoices = await testServicesState.current.invoices.list({ status: 'not_approved' })
+      expect(invoices).toHaveLength(1)
+    })
+  })
 
-    const invoices = await testServicesState.current.invoices.list({ status: 'not_approved' })
-    expect(invoices).toHaveLength(1)
+  it('shows a processing upload merged into whichever tab is active, on both tabs, then drops it once done', async () => {
+    // A longer processing delay than the default 20ms so the intermediate
+    // "processing" state is reliably observable instead of racing the assertion.
+    resetTestServices({ latencyMs: 0, processingDelayMs: 300 })
+    const user = userEvent.setup()
+    renderWithProviders(<InvoicesPage />)
+
+    const file = new File(['%PDF-1.4 fake'], 'invoice.pdf', { type: 'application/pdf' })
+    await user.upload(screen.getByLabelText('Upload invoice'), file)
+
+    // Lands on Not Approved (see handleFileSelected) - visible there while processing.
+    await waitFor(() => expect(screen.getByText('invoice.pdf')).toBeInTheDocument())
+    expect(screen.getByText(/processing/i)).toBeInTheDocument()
+
+    // Also visible on Approved, even though it'll never actually land there once resolved.
+    await user.click(screen.getByRole('button', { name: /^approved$/i }))
+    expect(screen.getByText('invoice.pdf')).toBeInTheDocument()
+
+    await waitFor(() => expect(screen.queryByText('invoice.pdf')).not.toBeInTheDocument(), { timeout: 5000 })
   })
 })

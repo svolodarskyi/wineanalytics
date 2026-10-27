@@ -14,7 +14,7 @@ describe('mock OpenAI service', () => {
         vendorName: 'Vino Co',
         invoiceDate: '2026-02-01',
         totalAmount: 100,
-        lineItems: [{ itemName: 'Wine A', volumeMl: 750, category: 'red', quantity: 1, unitPrice: 100, lineTotal: 100 }],
+        lineItems: [{ itemName: 'Wine A', volumeMl: 750, category: 'red', quantity: 1, unitPrice: 100, lineTotal: 100, packSize: 1 }],
         additionalCharges: [{ description: 'Sales Tax', amount: 8.5 }],
       },
       responseJson: { id: 'resp_1' },
@@ -31,7 +31,7 @@ describe('mock OpenAI service', () => {
       invoiceDate: '2026-02-01',
       totalAmount: 100,
       lines: [
-        { itemNameRaw: 'Wine A', volumeMlRaw: 750, categoryRaw: 'red', quantity: 1, unitPrice: 100, lineTotal: 100 },
+        { itemNameRaw: 'Wine A', volumeMlRaw: 750, categoryRaw: 'red', quantity: 1, unitPrice: 100, lineTotal: 100, packSize: 1 },
       ],
       additionalCharges: [{ description: 'Sales Tax', amount: 8.5 }],
     })

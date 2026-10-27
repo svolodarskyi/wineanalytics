@@ -118,7 +118,7 @@ export function SettingsPourSizesPage() {
       </p>
 
       <div className="inline-form">
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16 }}>
           <input
             type="checkbox"
             checked={includeInactive}
@@ -166,7 +166,6 @@ export function SettingsPourSizesPage() {
                 value={newName}
                 onChange={(event) => setNewName(event.target.value)}
                 placeholder="e.g. Glass"
-                autoFocus
               />
             </div>
             <div className="field">
@@ -207,7 +206,6 @@ export function SettingsPourSizesPage() {
                 id="detail-pour-size-name"
                 value={detailName}
                 onChange={(event) => setDetailName(event.target.value)}
-                autoFocus
               />
             </div>
             <div className="field">

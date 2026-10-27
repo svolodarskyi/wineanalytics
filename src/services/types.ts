@@ -42,20 +42,24 @@ export interface WineService {
   create(input: {
     name: string
     invoiceName?: string | null
+    producer?: string | null
     country?: string | null
     volumeMl?: number | null
     category?: WineCategory | null
-    imageDataUrl?: string | null
+    /** Undefined leaves photos untouched; an array (0-3 entries) replaces the whole set. */
+    imageDataUrls?: string[]
   }): Promise<Wine>
   update(
     id: string,
     input: {
       name: string
       invoiceName?: string | null
+      producer?: string | null
       country?: string | null
       volumeMl?: number | null
       category?: WineCategory | null
-      imageDataUrl?: string | null
+      /** Undefined leaves photos untouched; an array (0-3 entries) replaces the whole set. */
+    imageDataUrls?: string[]
     },
   ): Promise<Wine>
   setActive(id: string, active: boolean): Promise<Wine>
@@ -88,6 +92,14 @@ export interface InvoiceService {
   confirmSkuMatch(invoiceId: string, lineItemId: string): Promise<Invoice>
   /** Overrides a line item's SKU match with a user-selected wine. */
   selectSkuMatch(invoiceId: string, lineItemId: string, wineId: string): Promise<Invoice>
+  /** Corrects OCR-extracted volume/quantity/unit price/pack size by hand; lineTotal is always recomputed as quantity * unitPrice, never taken from the caller. */
+  updateLineItem(
+    invoiceId: string,
+    lineItemId: string,
+    fields: { volumeMl: number | null; quantity: number; unitPrice: number; packSize: number },
+  ): Promise<Invoice>
+  /** Marks (or unmarks) a line item as never meant to become inventory - skips the wine-SKU-match requirement on approval and purchased-quantity totals for that line. */
+  setLineItemExcluded(invoiceId: string, lineItemId: string, excluded: boolean): Promise<Invoice>
   /** Corrects the extracted invoice date by hand, e.g. when OCR missed or misread it. */
   updateInvoiceDate(invoiceId: string, invoiceDate: string | null): Promise<Invoice>
   /** Approves the invoice, folding its line items into wine balances. */
@@ -161,6 +173,7 @@ export interface OpenAiExtractedLine {
   quantity: number
   unitPrice: number
   lineTotal: number
+  packSize: number
 }
 
 export interface OpenAiService {
@@ -171,6 +184,14 @@ export interface OpenAiService {
     totalAmount: number
     lines: OpenAiExtractedLine[]
     additionalCharges: AdditionalCharge[]
+  }>
+  /** Sends 1-3 photos of a single bottle to OpenAI for label extraction, logging the request/response/cost the same way extractInvoice does. */
+  extractWine(input: { imageDataUrls: string[] }): Promise<{
+    name: string | null
+    producer: string | null
+    volumeMl: number | null
+    country: string | null
+    category: WineCategory | null
   }>
   listLogs(): Promise<OpenAiRequestLog[]>
 }

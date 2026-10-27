@@ -161,6 +161,45 @@ describe('mock wine service', () => {
       })
     })
 
+    it('folds pack size into purchased quantity and per-unit purchase-history price', async () => {
+      const wine = await services.wines.create({ name: 'Packed Wine' })
+      const vendor = await services.vendors.create({ name: 'Packed Vendor' })
+
+      const invoice = await services.invoices.upload({
+        fileName: 'inv.pdf',
+        fileType: 'pdf',
+        fileDataUrl: 'data:application/pdf;base64,AA==',
+      })
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      await services.invoices.selectVendorMatch(invoice.id, vendor.id)
+      const withLines = await services.invoices.get(invoice.id)
+      const [first, ...rest] = withLines!.lineItems
+      await services.invoices.selectSkuMatch(invoice.id, first.id, wine.id)
+      // Excluded rather than matched to a second wine - keeps this test focused on the pack-size math alone.
+      for (const line of rest) {
+        await services.invoices.setLineItemExcluded(invoice.id, line.id, true)
+      }
+
+      // 2 six-packs at $12/pack on the invoice - 12 bottles received at $2 each.
+      await services.invoices.updateLineItem(invoice.id, first.id, {
+        volumeMl: first.volumeMlRaw,
+        quantity: 2,
+        unitPrice: 12,
+        packSize: 6,
+      })
+
+      const approved = await services.invoices.approve(invoice.id)
+      expect(approved.status).toBe('approved')
+
+      const balances = await services.wines.getBalances()
+      expect(balances.find((b) => b.wine.id === wine.id)?.balanceInBottles).toBe(12)
+
+      const history = await services.wines.getPurchaseHistory(wine.id)
+      expect(history).toHaveLength(1)
+      expect(history[0]).toMatchObject({ quantity: 12, unitPrice: 2, lineTotal: 24 })
+    })
+
     it('subtracts sold volume, converted to bottle-equivalent via the wine\'s own volumeMl', async () => {
       const wine = await services.wines.create({ name: 'Sold Wine', volumeMl: 750 })
       const vendor = await services.vendors.create({ name: 'Vendor' })

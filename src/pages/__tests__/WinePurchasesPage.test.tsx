@@ -1,4 +1,5 @@
 import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetTestServices, testServicesState } from '../../test/mockServices'
 import { renderWithProviders } from '../../test/renderWithProviders'
@@ -10,9 +11,16 @@ vi.mock('../../services', () => ({
   },
 }))
 
+const navigateMock = vi.fn()
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+  return { ...actual, useNavigate: () => navigateMock }
+})
+
 describe('WinePurchasesPage', () => {
   beforeEach(() => {
     resetTestServices({ seed: false })
+    navigateMock.mockClear()
   })
 
   it('shows an empty state for a wine with no approved invoices', async () => {
@@ -26,7 +34,7 @@ describe('WinePurchasesPage', () => {
     expect(await screen.findByText(/no approved purchases yet/i)).toBeInTheDocument()
   })
 
-  it('shows a purchase history row with a link back to the invoice', async () => {
+  it('shows a purchase history row and navigates to its invoice when clicked', async () => {
     const wine = await testServicesState.current.wines.create({ name: 'Purchased Wine' })
     const vendor = await testServicesState.current.vendors.create({ name: 'History Vendor' })
     const invoice = await testServicesState.current.invoices.upload({
@@ -50,11 +58,14 @@ describe('WinePurchasesPage', () => {
       path: '/wines/:wineId',
     })
 
-    expect(await screen.findAllByText('History Vendor')).toHaveLength(processed!.lineItems.length)
+    const vendorCells = await screen.findAllByText('History Vendor')
+    expect(vendorCells).toHaveLength(processed!.lineItems.length)
 
-    const invoiceLinks = screen.getAllByRole('link', { name: /view invoice/i })
-    for (const link of invoiceLinks) {
-      expect(link).toHaveAttribute('href', `/invoices/${invoice.id}`)
-    }
+    const user = userEvent.setup()
+    const row = vendorCells[0].closest('tr')
+    expect(row).not.toBeNull()
+    await user.click(row!)
+
+    expect(navigateMock).toHaveBeenCalledWith(`/invoices/${invoice.id}`)
   })
 })

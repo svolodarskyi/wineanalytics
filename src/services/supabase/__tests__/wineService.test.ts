@@ -10,7 +10,7 @@ const ROW = {
   country: 'USA',
   volume_ml: null,
   category: null,
-  image_url: null,
+  image_urls: [] as string[],
   active: true,
   created_at: '2026-01-01T00:00:00.000Z',
 }
@@ -20,7 +20,7 @@ function supabaseWith(from: (table: string) => unknown, storage = fakeStorage())
 }
 
 describe('supabase wine service', () => {
-  it('lists wines without a photo, never touching storage', async () => {
+  it('lists wines with no photos, never touching storage', async () => {
     const storage = fakeStorage()
     const from = vi.fn(() => fakeQueryBuilder({ data: [ROW] }))
     const wines = createSupabaseWineService(supabaseWith(from, storage))
@@ -33,7 +33,7 @@ describe('supabase wine service', () => {
         country: 'USA',
         volumeMl: null,
         category: null,
-        imageDataUrl: null,
+        imageDataUrls: [],
         active: true,
         createdAt: ROW.created_at,
       },
@@ -41,13 +41,14 @@ describe('supabase wine service', () => {
     expect(storage.from).not.toHaveBeenCalled()
   })
 
-  it('resolves a signed URL for a wine that has a photo', async () => {
+  it('resolves a signed URL for each of a wine\'s photos', async () => {
     const storage = fakeStorage({ signedUrl: 'https://signed.example/w1.png' })
-    const from = vi.fn(() => fakeQueryBuilder({ data: [{ ...ROW, image_url: 'w1.png' }] }))
+    const from = vi.fn(() => fakeQueryBuilder({ data: [{ ...ROW, image_urls: ['w1-0.png', 'w1-1.png'] }] }))
     const wines = createSupabaseWineService(supabaseWith(from, storage))
     const [wine] = await wines.list()
-    expect(wine.imageDataUrl).toBe('https://signed.example/w1.png')
-    expect(storage.bucketApi.createSignedUrl).toHaveBeenCalledWith('w1.png', 3600)
+    expect(wine.imageDataUrls).toEqual(['https://signed.example/w1.png', 'https://signed.example/w1.png'])
+    expect(storage.bucketApi.createSignedUrl).toHaveBeenCalledWith('w1-0.png', 3600)
+    expect(storage.bucketApi.createSignedUrl).toHaveBeenCalledWith('w1-1.png', 3600)
   })
 
   it('create rejects a blank name without hitting the database', async () => {
@@ -57,14 +58,17 @@ describe('supabase wine service', () => {
     expect(from).not.toHaveBeenCalled()
   })
 
-  it('create uploads a data: URL photo before inserting the row', async () => {
+  it('create uploads each data: URL photo before inserting the row', async () => {
     const storage = fakeStorage()
-    const from = vi.fn(() => fakeQueryBuilder({ data: { ...ROW, image_url: 'some-id.png' } }))
+    const from = vi.fn(() => fakeQueryBuilder({ data: { ...ROW, image_urls: ['some-id-0.png', 'some-id-1.png'] } }))
     const wines = createSupabaseWineService(supabaseWith(from, storage))
-    await wines.create({ name: 'New Wine', imageDataUrl: 'data:image/png;base64,AAAA' })
-    expect(storage.bucketApi.upload).toHaveBeenCalled()
-    const [path] = storage.bucketApi.upload.mock.calls[0]
-    expect(path).toMatch(/\.png$/)
+    await wines.create({
+      name: 'New Wine',
+      imageDataUrls: ['data:image/png;base64,AAAA', 'data:image/png;base64,BBBB'],
+    })
+    expect(storage.bucketApi.upload).toHaveBeenCalledTimes(2)
+    const [path0] = storage.bucketApi.upload.mock.calls[0]
+    expect(path0).toMatch(/-0\.png$/)
   })
 
   it('create surfaces a friendly error on a unique-constraint violation', async () => {
@@ -73,26 +77,43 @@ describe('supabase wine service', () => {
     await expect(wines.create({ name: 'Caymus Cabernet Sauvignon' })).rejects.toThrow(/already exists/i)
   })
 
-  it('update leaves the photo untouched when imageDataUrl is an already-resolved URL', async () => {
+  it('update leaves photos untouched when imageDataUrls is not passed at all', async () => {
     const storage = fakeStorage()
     const from = vi
       .fn()
-      .mockReturnValueOnce(fakeQueryBuilder({ data: { image_url: 'existing.png' } }))
-      .mockReturnValueOnce(fakeQueryBuilder({ data: { ...ROW, image_url: 'existing.png' } }))
+      .mockReturnValueOnce(fakeQueryBuilder({ data: { image_urls: ['existing.png'] } }))
+      .mockReturnValueOnce(fakeQueryBuilder({ data: { ...ROW, image_urls: ['existing.png'] } }))
     const wines = createSupabaseWineService(supabaseWith(from, storage))
-    await wines.update('w1', { name: 'Caymus Cabernet Sauvignon', imageDataUrl: 'https://signed.example/existing.png' })
+    await wines.update('w1', { name: 'Caymus Cabernet Sauvignon' })
     expect(storage.bucketApi.upload).not.toHaveBeenCalled()
+    expect(storage.bucketApi.remove).not.toHaveBeenCalled()
+    const updateBuilder = from.mock.results[1].value
+    expect(updateBuilder.update).toHaveBeenCalledWith(expect.not.objectContaining({ image_urls: expect.anything() }))
   })
 
-  it('update clears the photo when imageDataUrl is explicitly null', async () => {
+  it('update wipes existing storage objects and re-uploads the new set when imageDataUrls changes', async () => {
+    const storage = fakeStorage()
     const from = vi
       .fn()
-      .mockReturnValueOnce(fakeQueryBuilder({ data: { image_url: 'existing.png' } }))
-      .mockReturnValueOnce(fakeQueryBuilder({ data: { ...ROW, image_url: null } }))
-    const wines = createSupabaseWineService(supabaseWith(from))
-    await wines.update('w1', { name: 'Caymus Cabernet Sauvignon', imageDataUrl: null })
+      .mockReturnValueOnce(fakeQueryBuilder({ data: { image_urls: ['existing.png'] } }))
+      .mockReturnValueOnce(fakeQueryBuilder({ data: { ...ROW, image_urls: ['w1-0.png'] } }))
+    const wines = createSupabaseWineService(supabaseWith(from, storage))
+    await wines.update('w1', { name: 'Caymus Cabernet Sauvignon', imageDataUrls: ['data:image/png;base64,AAAA'] })
+    expect(storage.bucketApi.remove).toHaveBeenCalledWith(['existing.png'])
+    expect(storage.bucketApi.upload).toHaveBeenCalledTimes(1)
+  })
+
+  it('update clears all photos when imageDataUrls is an empty array', async () => {
+    const storage = fakeStorage()
+    const from = vi
+      .fn()
+      .mockReturnValueOnce(fakeQueryBuilder({ data: { image_urls: ['existing.png'] } }))
+      .mockReturnValueOnce(fakeQueryBuilder({ data: { ...ROW, image_urls: [] } }))
+    const wines = createSupabaseWineService(supabaseWith(from, storage))
+    await wines.update('w1', { name: 'Caymus Cabernet Sauvignon', imageDataUrls: [] })
+    expect(storage.bucketApi.remove).toHaveBeenCalledWith(['existing.png'])
     const updateBuilder = from.mock.results[1].value
-    expect(updateBuilder.update).toHaveBeenCalledWith(expect.objectContaining({ image_url: null }))
+    expect(updateBuilder.update).toHaveBeenCalledWith(expect.objectContaining({ image_urls: [] }))
   })
 
   it('create sends volumeMl and category through to the insert payload', async () => {
@@ -122,9 +143,9 @@ describe('supabase wine service', () => {
       .mockReturnValueOnce(
         fakeQueryBuilder({
           data: [
-            { wine_id: 'w1', quantity: 6 },
-            { wine_id: 'w1', quantity: 4 },
-            { wine_id: 'w2', quantity: 12 },
+            { wine_id: 'w1', quantity: 6, pack_size: 1 },
+            { wine_id: 'w1', quantity: 4, pack_size: 1 },
+            { wine_id: 'w2', quantity: 12, pack_size: 1 },
           ],
         }),
       )
@@ -145,12 +166,14 @@ describe('supabase wine service', () => {
             quantity: 6,
             unit_price: 20,
             line_total: 120,
+            pack_size: 1,
             wine_invoices: { id: 'inv1', invoice_date: '2026-01-01', vendor_name_raw: 'Raw', wine_vendors: { name: 'Real Vendor' } },
           },
           {
             quantity: 3,
             unit_price: 20,
             line_total: 60,
+            pack_size: 1,
             wine_invoices: { id: 'inv2', invoice_date: '2026-02-01', vendor_name_raw: 'Raw', wine_vendors: null },
           },
         ],

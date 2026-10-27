@@ -2,31 +2,36 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PurchaseHistoryEntry, Wine, WineBalance } from '../../types'
 import type { WineListOptions, WineService } from '../types'
 import { fetchBalanceByWineId } from './balances'
-import { resolveSignedUrl, uploadDataUrl } from './storage'
+import { removeObject, resolveSignedUrl, uploadDataUrl } from './storage'
 
 const PHOTOS_BUCKET = 'wine-photos'
+const MAX_PHOTOS = 3
 
 interface WineRow {
   id: string
   name: string
   invoice_name: string | null
+  producer: string | null
   country: string | null
   volume_ml: number | null
   category: Wine['category']
-  image_url: string | null
+  image_urls: string[] | null
   active: boolean
   created_at: string
 }
 
 async function toWine(supabase: SupabaseClient, row: WineRow): Promise<Wine> {
+  const resolved = await Promise.all((row.image_urls ?? []).map((path) => resolveSignedUrl(supabase, PHOTOS_BUCKET, path)))
   return {
     id: row.id,
     name: row.name,
     invoiceName: row.invoice_name,
+    producer: row.producer,
     country: row.country,
     volumeMl: row.volume_ml,
     category: row.category,
-    imageDataUrl: await resolveSignedUrl(supabase, PHOTOS_BUCKET, row.image_url),
+    // A signing failure drops that one photo rather than failing the whole wine.
+    imageDataUrls: resolved.filter((url): url is string => url !== null),
     active: row.active,
     createdAt: row.created_at,
   }
@@ -42,24 +47,27 @@ function normalizeVolumeMl(value: number | null | undefined): number | null {
 }
 
 /**
- * Reconciles the incoming imageDataUrl against what the wine already has:
- * - undefined -> unchanged (field wasn't touched)
- * - null -> photo removed
- * - "data:..." -> a new photo was picked, needs uploading
- * - anything else (an already-resolved signed URL from a prior read) -> unchanged
+ * Reconciles the incoming photo set against what's currently stored.
+ * `imageDataUrls` is undefined when the field wasn't touched (left alone),
+ * otherwise it fully replaces the photo set (0-3 entries, always `data:`
+ * URLs - the caller is responsible for re-encoding any kept-as-is existing
+ * photo back into a data: URL before calling create/update, since a signed
+ * URL string alone can't be mapped back to its storage object). Wipe-and-
+ * replace rather than positional diffing: with reordering/removal possible
+ * at any position, there's no reliable way to tell which surviving entry
+ * corresponds to which existing stored path from the data alone.
  */
-async function resolveImagePath(
+async function resolveImagePaths(
   supabase: SupabaseClient,
   wineId: string,
-  imageDataUrl: string | null | undefined,
-  currentPath: string | null | undefined,
-): Promise<string | null | undefined> {
-  if (imageDataUrl === undefined) return undefined
-  if (imageDataUrl === null) return null
-  if (imageDataUrl.startsWith('data:')) {
-    return uploadDataUrl(supabase, PHOTOS_BUCKET, wineId, imageDataUrl)
-  }
-  return currentPath
+  imageDataUrls: string[] | undefined,
+  currentPaths: string[],
+): Promise<string[] | undefined> {
+  if (imageDataUrls === undefined) return undefined
+  await Promise.all(currentPaths.map((path) => removeObject(supabase, PHOTOS_BUCKET, path)))
+  return Promise.all(
+    imageDataUrls.slice(0, MAX_PHOTOS).map((dataUrl, index) => uploadDataUrl(supabase, PHOTOS_BUCKET, `${wineId}-${index}`, dataUrl)),
+  )
 }
 
 export function createSupabaseWineService(supabase: SupabaseClient): WineService {
@@ -86,19 +94,17 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
     async create(input: {
       name: string
       invoiceName?: string | null
+      producer?: string | null
       country?: string | null
       volumeMl?: number | null
       category?: Wine['category']
-      imageDataUrl?: string | null
+      imageDataUrls?: string[]
     }): Promise<Wine> {
       const name = input.name.trim()
       if (!name) throw new Error('Wine name is required.')
 
       const id = crypto.randomUUID()
-      const imagePath =
-        input.imageDataUrl && input.imageDataUrl.startsWith('data:')
-          ? await uploadDataUrl(supabase, PHOTOS_BUCKET, id, input.imageDataUrl)
-          : null
+      const imagePaths = (await resolveImagePaths(supabase, id, input.imageDataUrls, [])) ?? []
 
       const { data, error } = await supabase
         .from('wine_wines')
@@ -106,10 +112,11 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
           id,
           name,
           invoice_name: input.invoiceName?.trim() || null,
+          producer: input.producer?.trim() || null,
           country: input.country?.trim() || null,
           volume_ml: normalizeVolumeMl(input.volumeMl),
           category: input.category ?? null,
-          image_url: imagePath,
+          image_urls: imagePaths,
         })
         .select('*')
         .single()
@@ -125,10 +132,11 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
       input: {
         name: string
         invoiceName?: string | null
+        producer?: string | null
         country?: string | null
         volumeMl?: number | null
         category?: Wine['category']
-        imageDataUrl?: string | null
+        imageDataUrls?: string[]
       },
     ): Promise<Wine> {
       const name = input.name.trim()
@@ -136,23 +144,24 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
 
       const { data: current, error: currentError } = await supabase
         .from('wine_wines')
-        .select('image_url')
+        .select('image_urls')
         .eq('id', id)
         .maybeSingle()
       throwIfError(currentError)
       if (!current) throw new Error('Wine not found.')
 
-      const imagePath = await resolveImagePath(supabase, id, input.imageDataUrl, (current as WineRow).image_url)
+      const imagePaths = await resolveImagePaths(supabase, id, input.imageDataUrls, (current as WineRow).image_urls ?? [])
 
       const { data, error } = await supabase
         .from('wine_wines')
         .update({
           name,
           invoice_name: input.invoiceName?.trim() || null,
+          producer: input.producer?.trim() || null,
           country: input.country?.trim() || null,
           volume_ml: normalizeVolumeMl(input.volumeMl),
           category: input.category ?? null,
-          ...(imagePath !== undefined ? { image_url: imagePath } : {}),
+          ...(imagePaths !== undefined ? { image_urls: imagePaths } : {}),
         })
         .eq('id', id)
         .select('*')
@@ -205,16 +214,18 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
       const { data, error } = await supabase
         .from('wine_invoice_line_items')
         .select(
-          'quantity, unit_price, line_total, wine_invoices!inner(id, status, invoice_date, vendor_name_raw, wine_vendors(name))',
+          'quantity, unit_price, line_total, pack_size, wine_invoices!inner(id, status, invoice_date, vendor_name_raw, wine_vendors(name))',
         )
         .eq('wine_id', id)
         .eq('wine_invoices.status', 'approved')
+        .eq('excluded', false)
       throwIfError(error)
 
       interface Row {
         quantity: number
         unit_price: number
         line_total: number
+        pack_size: number
         wine_invoices: {
           id: string
           invoice_date: string | null
@@ -224,14 +235,18 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
       }
 
       return (data as unknown as Row[])
-        .map((row) => ({
-          invoiceId: row.wine_invoices.id,
-          date: row.wine_invoices.invoice_date,
-          vendorName: row.wine_invoices.wine_vendors?.name ?? row.wine_invoices.vendor_name_raw,
-          quantity: Number(row.quantity),
-          unitPrice: Number(row.unit_price),
-          lineTotal: Number(row.line_total),
-        }))
+        .map((row) => {
+          const packSize = Number(row.pack_size)
+          return {
+            invoiceId: row.wine_invoices.id,
+            date: row.wine_invoices.invoice_date,
+            vendorName: row.wine_invoices.wine_vendors?.name ?? row.wine_invoices.vendor_name_raw,
+            // Folds pack size in here so callers get real per-bottle quantity/price without knowing about packs - lineTotal is untouched, still the actual dollar amount.
+            quantity: Number(row.quantity) * packSize,
+            unitPrice: Number(row.unit_price) / packSize,
+            lineTotal: Number(row.line_total),
+          }
+        })
         .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
     },
   }

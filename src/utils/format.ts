@@ -1,3 +1,5 @@
+import { parseFlexibleDate } from './dates'
+
 export function formatCurrency(amount: number | null): string {
   if (amount === null) return '-'
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -28,9 +30,15 @@ export function formatBottles(value: number): string {
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
 }
 
+/** Signed round-to-whole-percent, e.g. "+12%" / "-8%" - for month-over-month deltas. */
+export function formatDeltaPct(pct: number): string {
+  const rounded = Math.round(pct)
+  return `${rounded > 0 ? '+' : ''}${rounded}%`
+}
+
 export function formatDate(iso: string | null): string {
   if (!iso) return '-'
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '-'
+  const date = parseFlexibleDate(iso)
+  if (!date) return '-'
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }

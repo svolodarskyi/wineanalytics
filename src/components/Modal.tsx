@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 interface ModalProps {
   title: string
@@ -9,6 +9,8 @@ interface ModalProps {
 }
 
 export function Modal({ title, onClose, children, size = 'default' }: ModalProps) {
+  const titleRef = useRef<HTMLHeadingElement>(null)
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') onClose()
@@ -16,6 +18,13 @@ export function Modal({ title, onClose, children, size = 'default' }: ModalProps
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
+
+  // Focus the title, not the first field, on open - a form's first input
+  // grabbing focus pops the on-screen keyboard immediately on mobile, before
+  // the user has even seen what they're filling in.
+  useEffect(() => {
+    titleRef.current?.focus()
+  }, [])
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -35,7 +44,9 @@ export function Modal({ title, onClose, children, size = 'default' }: ModalProps
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal__header">
-          <h2>{title}</h2>
+          <h2 ref={titleRef} tabIndex={-1}>
+            {title}
+          </h2>
           <button type="button" className="modal__close" onClick={onClose} aria-label={`Close ${title}`}>
             ✕
           </button>

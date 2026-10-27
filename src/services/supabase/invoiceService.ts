@@ -1,7 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { confidenceFromScore, findBestMatch } from '../mock/similarity'
-import type { AdditionalCharge, Confidence, Invoice, InvoiceStatus, MatchStatus, WineCategory } from '../../types'
-import type { InvoiceService, OpenAiExtractedLine, OpenAiService } from '../types'
+import type { Confidence, Invoice, InvoiceStatus, MatchStatus, WineCategory } from '../../types'
+import type { InvoiceService } from '../types'
 import { removeObject, resolveSignedUrl, uploadDataUrl } from './storage'
 
 const INVOICES_BUCKET = 'wine-invoices'
@@ -33,9 +32,11 @@ interface LineItemRow {
   quantity: number
   unit_price: number
   line_total: number
+  pack_size: number
   wine_id: string | null
   sku_confidence: Confidence | null
   sku_match_status: MatchStatus
+  excluded: boolean
 }
 
 interface ChargeRow {
@@ -45,6 +46,22 @@ interface ChargeRow {
 
 function throwIfError(error: { message: string } | null): void {
   if (error) throw new Error(error.message)
+}
+
+/**
+ * Any hand-edit made after approval invalidates that approval - it's
+ * accepted-as-correct data that's now being changed, so it needs a human to
+ * look it over and approve again before it counts. Filtered to a no-op when
+ * the invoice isn't currently approved, so every editing method can call
+ * this unconditionally instead of branching on status itself.
+ */
+async function revertApprovalIfEditing(supabase: SupabaseClient, invoiceId: string): Promise<void> {
+  const { error } = await supabase
+    .from('wine_invoices')
+    .update({ status: 'not_approved', approved_at: null })
+    .eq('id', invoiceId)
+    .eq('status', 'approved')
+  throwIfError(error)
 }
 
 async function toInvoice(supabase: SupabaseClient, row: InvoiceRow): Promise<Invoice> {
@@ -78,156 +95,53 @@ async function toInvoice(supabase: SupabaseClient, row: InvoiceRow): Promise<Inv
       quantity: Number(li.quantity),
       unitPrice: Number(li.unit_price),
       lineTotal: Number(li.line_total),
+      packSize: Number(li.pack_size),
       skuMatch: { wineId: li.wine_id, confidence: li.sku_confidence, status: li.sku_match_status },
+      excluded: li.excluded,
     })),
   }
 }
 
 async function fetchInvoice(supabase: SupabaseClient, id: string): Promise<Invoice> {
-  const { data, error } = await supabase.from('wine_invoices').select(SELECT_FULL).eq('id', id).maybeSingle()
+  const { data, error } = await supabase
+    .from('wine_invoices')
+    .select(SELECT_FULL)
+    .eq('id', id)
+    .order('position', { foreignTable: 'wine_invoice_line_items' })
+    .order('id', { foreignTable: 'wine_invoice_line_items' })
+    .maybeSingle()
   throwIfError(error)
   if (!data) throw new Error('Invoice not found.')
   return toInvoice(supabase, data as unknown as InvoiceRow)
 }
 
-interface MatchResult {
-  id: string | null
-  confidence: Confidence | null
-  status: MatchStatus
-}
+type CorrectableField = 'invoice_date' | 'quantity' | 'unit_price' | 'volume_ml' | 'pack_size'
 
-async function vendorMatchFor(supabase: SupabaseClient, rawName: string): Promise<MatchResult> {
-  const { data, error } = await supabase.from('wine_vendors').select('id, name, invoice_name, active').eq('active', true)
-  throwIfError(error)
-  const candidates = (data ?? []) as { id: string; name: string; invoice_name: string | null; active: boolean }[]
-  const best = findBestMatch(
-    rawName,
-    candidates.map((v) => ({ id: v.id, name: v.name, active: v.active, invoiceName: v.invoice_name })),
-  )
-  const confidence = best ? confidenceFromScore(best.score) : null
-  return { id: confidence ? (best?.id ?? null) : null, confidence, status: confidence ? 'suggested' : 'unresolved' }
-}
-
-async function skuMatchFor(supabase: SupabaseClient, rawName: string): Promise<MatchResult> {
-  const { data, error } = await supabase.from('wine_wines').select('id, name, invoice_name, active').eq('active', true)
-  throwIfError(error)
-  const candidates = (data ?? []) as { id: string; name: string; invoice_name: string | null; active: boolean }[]
-  const best = findBestMatch(
-    rawName,
-    candidates.map((w) => ({ id: w.id, name: w.name, active: w.active, invoiceName: w.invoice_name })),
-  )
-  const confidence = best ? confidenceFromScore(best.score) : null
-  return { id: confidence ? (best?.id ?? null) : null, confidence, status: confidence ? 'suggested' : 'unresolved' }
-}
-
-/**
- * Best-effort: writes a diagnostic row into wine_openai_logs (model:
- * "db-write") so a background-processing failure is visible somewhere
- * queryable - Settings > AI Requests - instead of only an ephemeral
- * console.error, which is easy to miss for a fire-and-forget failure no one
- * was watching the devtools for when it happened.
- */
-async function logProcessingFailure(supabase: SupabaseClient, invoiceId: string, fileName: string, err: unknown): Promise<void> {
-  const message = err instanceof Error ? err.message : String(err)
-  console.error(`Invoice ${invoiceId}: failed to complete background processing.`, err)
-  await supabase.from('wine_openai_logs').insert({
-    invoice_id: invoiceId,
-    model: 'db-write',
-    file_name: fileName,
-    response_json: null,
-    prompt_tokens: null,
-    completion_tokens: null,
-    total_tokens: null,
-    cost_usd: 0,
-    error: message,
-  })
-}
-
-/**
- * Fills in a `processing` invoice from an extraction result (real or the
- * empty fallback) and runs matching against current master data.
- *
- * Line items/charges are written *before* the invoice's own status flips to
- * "not_approved" - the review page's polling (see useInvoice in
- * useInvoices.ts) stops as soon as it observes a non-"processing" status, so
- * flipping status first left a real window where a poll could land between
- * that update and the line-item insert and see a "done" invoice with no
- * line items, never polling again to pick them up.
- *
- * Never throws: any failure here previously surfaced as a silent, unhandled
- * promise rejection, leaving the invoice permanently stuck in "processing"
- * with no way to tell why. Failures are now logged (see logProcessingFailure)
- * and just leave the invoice in whatever state it reached - discard it and
- * retry the upload.
- */
-async function completeProcessingFromExtraction(
+/** Records a manual correction to an OCR-extracted field - skipped as a no-op when the value didn't actually change. Best-effort: a logging failure never blocks the underlying save. */
+async function logCorrection(
   supabase: SupabaseClient,
-  invoiceId: string,
-  fileName: string,
-  extraction: {
-    vendorNameRaw: string
-    invoiceDate: string | null
-    totalAmount: number
-    lines: OpenAiExtractedLine[]
-    additionalCharges: AdditionalCharge[]
-  },
+  params: { invoiceId: string; lineItemId?: string; fieldName: CorrectableField; oldValue: string | number | null; newValue: string | number | null },
 ): Promise<void> {
-  try {
-    const vendorMatch = await vendorMatchFor(supabase, extraction.vendorNameRaw)
-
-    if (extraction.lines.length) {
-      const lineRows = await Promise.all(
-        extraction.lines.map(async (line) => {
-          const skuMatch = await skuMatchFor(supabase, line.itemNameRaw)
-          return {
-            invoice_id: invoiceId,
-            item_name_raw: line.itemNameRaw,
-            volume_ml_raw: line.volumeMlRaw,
-            category_raw: line.categoryRaw,
-            quantity: line.quantity,
-            unit_price: line.unitPrice,
-            line_total: line.lineTotal,
-            wine_id: skuMatch.id,
-            sku_confidence: skuMatch.confidence,
-            sku_match_status: skuMatch.status,
-          }
-        }),
-      )
-      const { error: lineError } = await supabase.from('wine_invoice_line_items').insert(lineRows)
-      if (lineError) throw new Error(`Inserting line items failed: ${lineError.message}`)
-    }
-
-    if (extraction.additionalCharges.length) {
-      const { error: chargesError } = await supabase.from('wine_invoice_additional_charges').insert(
-        extraction.additionalCharges.map((c) => ({ invoice_id: invoiceId, description: c.description, amount: c.amount })),
-      )
-      if (chargesError) throw new Error(`Inserting additional charges failed: ${chargesError.message}`)
-    }
-
-    const { error: updateError } = await supabase
-      .from('wine_invoices')
-      .update({
-        status: 'not_approved',
-        invoice_date: extraction.invoiceDate,
-        total_amount: extraction.totalAmount,
-        vendor_name_raw: extraction.vendorNameRaw,
-        vendor_id: vendorMatch.id,
-        vendor_confidence: vendorMatch.confidence,
-        vendor_match_status: vendorMatch.status,
-      })
-      .eq('id', invoiceId)
-    if (updateError) throw new Error(`Updating invoice failed: ${updateError.message}`)
-  } catch (err) {
-    await logProcessingFailure(supabase, invoiceId, fileName, err)
-  }
+  if (params.oldValue === params.newValue) return
+  const { error } = await supabase.from('wine_invoice_corrections').insert({
+    invoice_id: params.invoiceId,
+    line_item_id: params.lineItemId ?? null,
+    field_name: params.fieldName,
+    old_value: params.oldValue == null ? null : String(params.oldValue),
+    new_value: params.newValue == null ? null : String(params.newValue),
+  })
+  if (error) console.error('Could not log invoice correction:', error.message)
 }
 
-const EMPTY_EXTRACTION = { vendorNameRaw: '', invoiceDate: null, totalAmount: 0, lines: [], additionalCharges: [] }
-
-export function createSupabaseInvoiceService(supabase: SupabaseClient, openai: OpenAiService): InvoiceService {
+export function createSupabaseInvoiceService(supabase: SupabaseClient): InvoiceService {
   return {
     async list(options?: { status?: InvoiceStatus | 'all' }): Promise<Invoice[]> {
-      let query = supabase.from('wine_invoices').select(SELECT_FULL).order('uploaded_at', { ascending: false })
+      let query = supabase
+        .from('wine_invoices')
+        .select(SELECT_FULL)
+        .order('uploaded_at', { ascending: false })
+        .order('position', { foreignTable: 'wine_invoice_line_items' })
+        .order('id', { foreignTable: 'wine_invoice_line_items' })
       if (options?.status && options.status !== 'all') {
         query = query.eq('status', options.status)
       }
@@ -237,7 +151,13 @@ export function createSupabaseInvoiceService(supabase: SupabaseClient, openai: O
     },
 
     async get(id: string): Promise<Invoice | null> {
-      const { data, error } = await supabase.from('wine_invoices').select(SELECT_FULL).eq('id', id).maybeSingle()
+      const { data, error } = await supabase
+        .from('wine_invoices')
+        .select(SELECT_FULL)
+        .eq('id', id)
+        .order('position', { foreignTable: 'wine_invoice_line_items' })
+        .order('id', { foreignTable: 'wine_invoice_line_items' })
+        .maybeSingle()
       throwIfError(error)
       return data ? toInvoice(supabase, data as unknown as InvoiceRow) : null
     },
@@ -260,29 +180,16 @@ export function createSupabaseInvoiceService(supabase: SupabaseClient, openai: O
         .select(SELECT_FULL)
         .single()
       throwIfError(error)
-      const invoice = await toInvoice(supabase, data as unknown as InvoiceRow)
-
-      if (input.fileType === 'image') {
-        // Fire-and-forget: the review page polls while status is "processing".
-        openai
-          .extractInvoice({ fileName: input.fileName, imageDataUrl: input.fileDataUrl, invoiceId: id })
-          .then((extraction) => completeProcessingFromExtraction(supabase, id, input.fileName, extraction))
-          .catch(() => {
-            // The extraction call itself failed - already captured in the
-            // OpenAI request log. Leave the invoice fully unresolved so the
-            // user can still fill it in by hand.
-            void completeProcessingFromExtraction(supabase, id, input.fileName, EMPTY_EXTRACTION)
-          })
-      } else {
-        // No real extraction path for PDFs yet (vision models need an image) -
-        // land as fully unresolved rather than faking data or getting stuck.
-        void completeProcessingFromExtraction(supabase, id, input.fileName, EMPTY_EXTRACTION)
-      }
-
-      return invoice
+      // Processing (OCR + matching + line items) happens server-side, kicked
+      // off by a Postgres trigger on this insert - see
+      // supabase/functions/process-invoice and
+      // supabase/migrations/20260912000000_invoice_processing_webhook.sql.
+      // The review page polls while status is "processing" (see useInvoice).
+      return toInvoice(supabase, data as unknown as InvoiceRow)
     },
 
     async confirmVendorMatch(invoiceId: string): Promise<Invoice> {
+      await revertApprovalIfEditing(supabase, invoiceId)
       const { data, error } = await supabase.from('wine_invoices').select('vendor_id').eq('id', invoiceId).maybeSingle()
       throwIfError(error)
       if (!data) throw new Error('Invoice not found.')
@@ -298,6 +205,7 @@ export function createSupabaseInvoiceService(supabase: SupabaseClient, openai: O
     },
 
     async selectVendorMatch(invoiceId: string, vendorId: string): Promise<Invoice> {
+      await revertApprovalIfEditing(supabase, invoiceId)
       const { error } = await supabase
         .from('wine_invoices')
         .update({ vendor_id: vendorId, vendor_confidence: null, vendor_match_status: 'changed' })
@@ -310,6 +218,7 @@ export function createSupabaseInvoiceService(supabase: SupabaseClient, openai: O
     },
 
     async confirmSkuMatch(invoiceId: string, lineItemId: string): Promise<Invoice> {
+      await revertApprovalIfEditing(supabase, invoiceId)
       const { data, error } = await supabase
         .from('wine_invoice_line_items')
         .select('wine_id')
@@ -330,6 +239,7 @@ export function createSupabaseInvoiceService(supabase: SupabaseClient, openai: O
     },
 
     async selectSkuMatch(invoiceId: string, lineItemId: string, wineId: string): Promise<Invoice> {
+      await revertApprovalIfEditing(supabase, invoiceId)
       const { error } = await supabase
         .from('wine_invoice_line_items')
         .update({ wine_id: wineId, sku_confidence: null, sku_match_status: 'changed' })
@@ -342,9 +252,70 @@ export function createSupabaseInvoiceService(supabase: SupabaseClient, openai: O
       return fetchInvoice(supabase, invoiceId)
     },
 
+    async updateLineItem(
+      invoiceId: string,
+      lineItemId: string,
+      fields: { volumeMl: number | null; quantity: number; unitPrice: number; packSize: number },
+    ): Promise<Invoice> {
+      await revertApprovalIfEditing(supabase, invoiceId)
+      const { data: before, error: fetchError } = await supabase
+        .from('wine_invoice_line_items')
+        .select('quantity, unit_price, volume_ml_raw, pack_size')
+        .eq('id', lineItemId)
+        .eq('invoice_id', invoiceId)
+        .maybeSingle()
+      throwIfError(fetchError)
+      if (!before) throw new Error('Invoice line item not found.')
+      const previous = before as { quantity: number; unit_price: number; volume_ml_raw: number | null; pack_size: number }
+
+      const lineTotal = Math.round(fields.quantity * fields.unitPrice * 100) / 100
+      const { error } = await supabase
+        .from('wine_invoice_line_items')
+        .update({
+          quantity: fields.quantity,
+          unit_price: fields.unitPrice,
+          line_total: lineTotal,
+          volume_ml_raw: fields.volumeMl,
+          pack_size: fields.packSize,
+        })
+        .eq('id', lineItemId)
+        .eq('invoice_id', invoiceId)
+      throwIfError(error)
+
+      await logCorrection(supabase, { invoiceId, lineItemId, fieldName: 'quantity', oldValue: previous.quantity, newValue: fields.quantity })
+      await logCorrection(supabase, { invoiceId, lineItemId, fieldName: 'unit_price', oldValue: previous.unit_price, newValue: fields.unitPrice })
+      await logCorrection(supabase, { invoiceId, lineItemId, fieldName: 'volume_ml', oldValue: previous.volume_ml_raw, newValue: fields.volumeMl })
+      await logCorrection(supabase, { invoiceId, lineItemId, fieldName: 'pack_size', oldValue: previous.pack_size, newValue: fields.packSize })
+
+      return fetchInvoice(supabase, invoiceId)
+    },
+
+    async setLineItemExcluded(invoiceId: string, lineItemId: string, excluded: boolean): Promise<Invoice> {
+      await revertApprovalIfEditing(supabase, invoiceId)
+      const { error } = await supabase
+        .from('wine_invoice_line_items')
+        .update({ excluded })
+        .eq('id', lineItemId)
+        .eq('invoice_id', invoiceId)
+      throwIfError(error)
+      return fetchInvoice(supabase, invoiceId)
+    },
+
     async updateInvoiceDate(invoiceId: string, invoiceDate: string | null): Promise<Invoice> {
+      await revertApprovalIfEditing(supabase, invoiceId)
+      const { data: before, error: fetchError } = await supabase
+        .from('wine_invoices')
+        .select('invoice_date')
+        .eq('id', invoiceId)
+        .maybeSingle()
+      throwIfError(fetchError)
+      const previousDate = (before as { invoice_date: string | null } | null)?.invoice_date ?? null
+
       const { error } = await supabase.from('wine_invoices').update({ invoice_date: invoiceDate }).eq('id', invoiceId)
       throwIfError(error)
+
+      await logCorrection(supabase, { invoiceId, fieldName: 'invoice_date', oldValue: previousDate, newValue: invoiceDate })
+
       return fetchInvoice(supabase, invoiceId)
     },
 
@@ -357,7 +328,7 @@ export function createSupabaseInvoiceService(supabase: SupabaseClient, openai: O
       if (!invoice.extracted.vendorMatch.vendorId) {
         throw new Error('Resolve the vendor match before approving.')
       }
-      if (invoice.lineItems.some((line) => !line.skuMatch.wineId)) {
+      if (invoice.lineItems.some((line) => !line.excluded && !line.skuMatch.wineId)) {
         throw new Error("Resolve every line item's wine SKU before approving.")
       }
 
@@ -388,9 +359,6 @@ export function createSupabaseInvoiceService(supabase: SupabaseClient, openai: O
       throwIfError(error)
       if (!data) throw new Error('Invoice not found.')
       const row = data as { status: InvoiceStatus; file_path: string | null }
-      if (row.status === 'approved') {
-        throw new Error('Approved invoices cannot be discarded.')
-      }
 
       // wine_invoice_line_items and wine_invoice_additional_charges cascade-delete with the invoice row.
       const { error: deleteError } = await supabase.from('wine_invoices').delete().eq('id', invoiceId)

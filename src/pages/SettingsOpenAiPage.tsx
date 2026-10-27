@@ -51,7 +51,11 @@ export function SettingsOpenAiPage() {
               {logs.map((log) => (
                 <tr key={log.id} className="data-table__row--clickable" onClick={() => setViewingLog(log)}>
                   <td>
-                    <img src={log.imageDataUrl} alt="" className="openai-log-thumb" />
+                    {log.imageDataUrl ? (
+                      <img src={log.imageDataUrl} alt="" className="openai-log-thumb" />
+                    ) : (
+                      <div className="openai-log-thumb openai-log-thumb--empty" />
+                    )}
                   </td>
                   <td>{log.fileName}</td>
                   <td>{formatDateTime(log.createdAt)}</td>
@@ -76,7 +80,11 @@ export function SettingsOpenAiPage() {
           <div className="two-col">
             <div>
               <h2>Image sent</h2>
-              <img src={viewingLog.imageDataUrl} alt={viewingLog.fileName} className="invoice-doc-preview" />
+              {viewingLog.imageDataUrl ? (
+                <img src={viewingLog.imageDataUrl} alt={viewingLog.fileName} className="invoice-doc-preview" />
+              ) : (
+                <p className="empty-state">No image stored for this request.</p>
+              )}
             </div>
             <div>
               <h2>{viewingLog.error ? 'Error' : 'Response JSON'}</h2>

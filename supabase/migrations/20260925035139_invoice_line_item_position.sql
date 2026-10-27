@@ -1,0 +1,11 @@
+-- Line items were fetched via a joined select with no ORDER BY on
+-- wine_invoice_line_items, so Postgres/PostgREST make no guarantee about
+-- what order they come back in - a refetch (confirming a match, excluding a
+-- line, editing pack size, anything that re-runs fetchInvoice) could return
+-- them in a different order than before, making rows visibly jump around on
+-- the review page even though nothing about the line items themselves
+-- changed. This column preserves the order they were printed on the invoice
+-- (and were originally extracted in), so every fetch can request a stable,
+-- deterministic order via `.order('position', { foreignTable: ... })` - see
+-- src/services/supabase/invoiceService.ts.
+alter table wine_invoice_line_items add column if not exists position integer not null default 0;

@@ -57,10 +57,12 @@ export function seedInvoicesAndSales(
   const unitCostByWineId = new Map(wines.map((wine) => [wine.id, baseCostForCategory(wine.category) * (0.85 + Math.random() * 0.3)]))
   const purchasedBottlesByWineId = new Map<string, number>()
 
-  // Roughly one delivery a week for the last ~20 weeks, 2-4 wines per invoice.
+  // Roughly one delivery a week for the last ~20 weeks plus one already this
+  // week, 2-4 wines per invoice - the week-0 delivery keeps "spend this
+  // month" non-empty out of the box instead of only ever showing prior months.
   const invoices: Invoice[] = []
   const weekCount = 20
-  for (let week = weekCount; week >= 1; week--) {
+  for (let week = weekCount; week >= 0; week--) {
     const vendor = vendors[week % vendors.length]
     const invoiceWines = shuffle(wines).slice(0, randomInt(2, 4))
     const lineItems: InvoiceLineItem[] = invoiceWines.map((wine) => {
@@ -75,11 +77,13 @@ export function seedInvoicesAndSales(
         quantity,
         unitPrice,
         lineTotal: round2(quantity * unitPrice),
+        packSize: 1,
         skuMatch: { wineId: wine.id, confidence: 'high', status: 'confirmed' },
+        excluded: false,
       }
     })
 
-    const invoiceDate = daysAgoAt(week * 7 - randomInt(0, 2), randomInt(8, 11), randomInt(0, 59))
+    const invoiceDate = daysAgoAt(Math.max(0, week * 7 - randomInt(0, 2)), randomInt(8, 11), randomInt(0, 59))
     const invoiceDateIso = invoiceDate.toISOString()
     invoices.push({
       id: createId('invoice'),
@@ -125,7 +129,9 @@ export function seedInvoicesAndSales(
         quantity: 6,
         unitPrice: 35,
         lineTotal: 210,
+        packSize: 1,
         skuMatch: { wineId: pendingWine.id, confidence: 'high', status: 'suggested' },
+        excluded: false,
       },
     ],
   })

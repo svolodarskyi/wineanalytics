@@ -23,10 +23,11 @@ export function seedWines(): Wine[] {
     id: createId('wine'),
     name,
     invoiceName: null,
+    producer: null,
     country,
     volumeMl,
     category,
-    imageDataUrl: null,
+    imageDataUrls: [],
     active: true,
     createdAt: now,
   }))

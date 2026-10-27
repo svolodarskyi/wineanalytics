@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { EntityManager } from '../components/EntityManager'
+import { useExtractWine } from '../hooks/useOpenAi'
 import { useCreateWine, useDeleteWine, useSetWineActive, useUpdateWine, useWines } from '../hooks/useWines'
 
 export function SettingsWinesPage() {
@@ -20,6 +21,7 @@ export function SettingsWinesPage() {
   const updateWine = useUpdateWine()
   const setWineActive = useSetWineActive()
   const deleteWine = useDeleteWine()
+  const extractWine = useExtractWine()
 
   return (
     <EntityManager
@@ -35,6 +37,7 @@ export function SettingsWinesPage() {
       onUpdate={(id, input) => updateWine.mutateAsync({ id, ...input })}
       onSetActive={(id, active) => setWineActive.mutateAsync({ id, active })}
       onDelete={(id) => deleteWine.mutateAsync(id)}
+      onScanWine={(imageDataUrls) => extractWine.mutateAsync(imageDataUrls)}
       showCountry
       showWineDetails
       showImage

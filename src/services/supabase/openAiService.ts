@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { OpenAiRequestLog } from '../../types'
-import { extractInvoiceImage } from '../openai/client'
-import { OPENAI_MODEL } from '../openai/pricing'
+import { extractInvoiceImage, extractWinePhotos } from '../openai/client'
+import { INVOICE_OCR_MODEL, WINE_SCAN_MODEL } from '../openai/pricing'
 import type { OpenAiService } from '../types'
 import { resolveSignedUrl } from './storage'
 
@@ -33,12 +33,15 @@ function throwIfError(error: { message: string } | null): void {
  */
 export function createSupabaseOpenAiService(supabase: SupabaseClient): OpenAiService {
   return {
+    // Unused by the real backend since invoice processing moved server-side
+    // (see supabase/functions/process-invoice) - kept because OpenAiService
+    // is a shared interface and the mock backend's invoiceService still calls it.
     async extractInvoice(input: { fileName: string; imageDataUrl: string; invoiceId?: string }) {
       try {
         const result = await extractInvoiceImage(input.imageDataUrl)
         await supabase.from('wine_openai_logs').insert({
           invoice_id: input.invoiceId ?? null,
-          model: OPENAI_MODEL,
+          model: INVOICE_OCR_MODEL,
           file_name: input.fileName,
           response_json: result.responseJson,
           prompt_tokens: result.usage.promptTokens,
@@ -58,6 +61,7 @@ export function createSupabaseOpenAiService(supabase: SupabaseClient): OpenAiSer
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             lineTotal: item.lineTotal,
+            packSize: item.packSize,
           })),
           additionalCharges: result.parsed.additionalCharges,
         }
@@ -65,8 +69,41 @@ export function createSupabaseOpenAiService(supabase: SupabaseClient): OpenAiSer
         const message = err instanceof Error ? err.message : 'OpenAI request failed.'
         await supabase.from('wine_openai_logs').insert({
           invoice_id: input.invoiceId ?? null,
-          model: OPENAI_MODEL,
+          model: INVOICE_OCR_MODEL,
           file_name: input.fileName,
+          response_json: null,
+          prompt_tokens: null,
+          completion_tokens: null,
+          total_tokens: null,
+          cost_usd: 0,
+          error: message,
+        })
+        throw err
+      }
+    },
+
+    async extractWine(input: { imageDataUrls: string[] }) {
+      const fileName = `bottle scan (${input.imageDataUrls.length} photo${input.imageDataUrls.length === 1 ? '' : 's'})`
+      try {
+        const result = await extractWinePhotos(input.imageDataUrls)
+        await supabase.from('wine_openai_logs').insert({
+          invoice_id: null,
+          model: WINE_SCAN_MODEL,
+          file_name: fileName,
+          response_json: result.responseJson,
+          prompt_tokens: result.usage.promptTokens,
+          completion_tokens: result.usage.completionTokens,
+          total_tokens: result.usage.totalTokens,
+          cost_usd: result.costUsd,
+          error: null,
+        })
+        return result.parsed
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'OpenAI request failed.'
+        await supabase.from('wine_openai_logs').insert({
+          invoice_id: null,
+          model: WINE_SCAN_MODEL,
+          file_name: fileName,
           response_json: null,
           prompt_tokens: null,
           completion_tokens: null,

@@ -1,5 +1,5 @@
-import { extractInvoiceImage } from '../openai/client'
-import { OPENAI_MODEL } from '../openai/pricing'
+import { extractInvoiceImage, extractWinePhotos } from '../openai/client'
+import { INVOICE_OCR_MODEL, WINE_SCAN_MODEL } from '../openai/pricing'
 import type { OpenAiService } from '../types'
 import { delay } from './delay'
 import { createId } from './ids'
@@ -18,7 +18,7 @@ export function createOpenAiService(store: MockStore, latencyMs: number): OpenAi
         store.addOpenAiLog({
           id: createId('openai'),
           createdAt: new Date().toISOString(),
-          model: OPENAI_MODEL,
+          model: INVOICE_OCR_MODEL,
           fileName: input.fileName,
           imageDataUrl: input.imageDataUrl,
           responseJson: result.responseJson,
@@ -37,6 +37,7 @@ export function createOpenAiService(store: MockStore, latencyMs: number): OpenAi
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             lineTotal: item.lineTotal,
+            packSize: item.packSize,
           })),
           additionalCharges: result.parsed.additionalCharges,
         }
@@ -45,9 +46,42 @@ export function createOpenAiService(store: MockStore, latencyMs: number): OpenAi
         store.addOpenAiLog({
           id: createId('openai'),
           createdAt: new Date().toISOString(),
-          model: OPENAI_MODEL,
+          model: INVOICE_OCR_MODEL,
           fileName: input.fileName,
           imageDataUrl: input.imageDataUrl,
+          responseJson: null,
+          usage: null,
+          costUsd: 0,
+          error: message,
+        })
+        throw err
+      }
+    },
+
+    async extractWine(input: { imageDataUrls: string[] }) {
+      const fileName = `bottle scan (${input.imageDataUrls.length} photo${input.imageDataUrls.length === 1 ? '' : 's'})`
+      try {
+        const result = await extractWinePhotos(input.imageDataUrls)
+        store.addOpenAiLog({
+          id: createId('openai'),
+          createdAt: new Date().toISOString(),
+          model: WINE_SCAN_MODEL,
+          fileName,
+          imageDataUrl: input.imageDataUrls[0] ?? '',
+          responseJson: result.responseJson,
+          usage: result.usage,
+          costUsd: result.costUsd,
+          error: null,
+        })
+        return result.parsed
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'OpenAI request failed.'
+        store.addOpenAiLog({
+          id: createId('openai'),
+          createdAt: new Date().toISOString(),
+          model: WINE_SCAN_MODEL,
+          fileName,
+          imageDataUrl: input.imageDataUrls[0] ?? '',
           responseJson: null,
           usage: null,
           costUsd: 0,

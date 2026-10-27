@@ -11,6 +11,14 @@ export function useInvoices(status?: InvoiceStatus | 'all') {
     queryFn: () => services.invoices.list({ status }),
     refetchInterval: (query: Query<Invoice[]>) =>
       query.state.data?.some((invoice) => invoice.status === 'processing') ? PROCESSING_POLL_MS : false,
+    // Overrides the app-wide default (off) for this query specifically:
+    // taking a photo backgrounds the tab while the native camera/picker is
+    // open, and mobile browsers throttle or fully pause JS timers (the
+    // refetchInterval poll above) while backgrounded - inconsistently, which
+    // is why the Processing list sometimes updates on its own and sometimes
+    // needs a manual refresh. Refocusing the tab isn't subject to that
+    // throttling, so it's a reliable second path to a fresh fetch.
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -21,6 +29,7 @@ export function useInvoice(id: string | undefined) {
     enabled: Boolean(id),
     refetchInterval: (query: Query<Invoice | null>) =>
       query.state.data?.status === 'processing' ? PROCESSING_POLL_MS : false,
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -48,9 +57,19 @@ function useInvalidateInvoices() {
 function pollUntilProcessed(queryClient: QueryClient, invoiceId: string, attempt = 0): void {
   if (attempt >= 30) return // ~30s safety cap
   setTimeout(async () => {
-    const current = await services.invoices.get(invoiceId)
-    queryClient.invalidateQueries({ queryKey: ['invoices'] })
-    if (current?.status === 'processing') {
+    // A single failed fetch (token refresh, transient network blip) must not
+    // kill the rest of the retry chain - without the catch, an uncaught
+    // rejection here both skips this tick's invalidate and stops every
+    // future tick, silently leaving the list stale until something else
+    // (e.g. a full page reload) forces a fresh fetch.
+    let current: Awaited<ReturnType<typeof services.invoices.get>> = null
+    try {
+      current = await services.invoices.get(invoiceId)
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    } catch (err) {
+      console.error(`Invoice ${invoiceId}: failed to poll processing status.`, err)
+    }
+    if (!current || current.status === 'processing') {
       pollUntilProcessed(queryClient, invoiceId, attempt + 1)
     }
   }, PROCESSING_POLL_MS)
@@ -63,6 +82,23 @@ export function useUploadInvoice() {
     mutationFn: (input: { fileName: string; fileType: 'image' | 'pdf'; fileDataUrl: string }) =>
       services.invoices.upload(input),
     onSuccess: (invoice) => {
+      // Don't wait on a refetch (timer- or focus-triggered - both can be
+      // delayed by mobile background-tab throttling around the native
+      // camera/picker) to surface a just-uploaded invoice: the mutation
+      // response already *is* the answer, so seed the Processing list's
+      // cache with it directly for instant, deterministic visibility. The
+      // invalidate() below still reconciles with the server in the
+      // background as usual.
+      //
+      // Unconditionally, not `old ? [...] : old` - that skipped the seed
+      // exactly when it mattered most: right after the "+Add Invoice"
+      // shortcut mounts this page and opens the camera immediately, the
+      // "processing" query's very first fetch may still be in flight (old
+      // is undefined) by the time upload() resolves, so the seed was a
+      // silent no-op and the row just... sometimes didn't show up.
+      if (invoice.status === 'processing') {
+        queryClient.setQueryData<Invoice[]>(queryKeys.invoices('processing'), (old) => [invoice, ...(old ?? [])])
+      }
       invalidate()
       if (invoice.status === 'processing') {
         pollUntilProcessed(queryClient, invoice.id)
@@ -102,6 +138,37 @@ export function useSelectSkuMatch() {
   return useMutation({
     mutationFn: ({ invoiceId, lineItemId, wineId }: { invoiceId: string; lineItemId: string; wineId: string }) =>
       services.invoices.selectSkuMatch(invoiceId, lineItemId, wineId),
+    onSuccess: (invoice) => invalidate(invoice.id),
+  })
+}
+
+export function useUpdateLineItem() {
+  const invalidate = useInvalidateInvoices()
+  return useMutation({
+    mutationFn: ({
+      invoiceId,
+      lineItemId,
+      volumeMl,
+      quantity,
+      unitPrice,
+      packSize,
+    }: {
+      invoiceId: string
+      lineItemId: string
+      volumeMl: number | null
+      quantity: number
+      unitPrice: number
+      packSize: number
+    }) => services.invoices.updateLineItem(invoiceId, lineItemId, { volumeMl, quantity, unitPrice, packSize }),
+    onSuccess: (invoice) => invalidate(invoice.id),
+  })
+}
+
+export function useSetLineItemExcluded() {
+  const invalidate = useInvalidateInvoices()
+  return useMutation({
+    mutationFn: ({ invoiceId, lineItemId, excluded }: { invoiceId: string; lineItemId: string; excluded: boolean }) =>
+      services.invoices.setLineItemExcluded(invoiceId, lineItemId, excluded),
     onSuccess: (invoice) => invalidate(invoice.id),
   })
 }

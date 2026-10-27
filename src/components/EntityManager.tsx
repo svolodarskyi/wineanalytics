@@ -1,28 +1,32 @@
 import { useEffect, useRef, useState, type ChangeEvent, type SubmitEvent } from 'react'
 import type { WineCategory } from '../types'
-import { readFileAsDataUrl } from '../utils/readFileAsDataUrl'
-import { VOLUME_ML_PRESETS, WINE_CATEGORY_OPTIONS } from '../utils/wineFormOptions'
+import { normalizeImagesForSave, readFileAsDataUrl } from '../utils/readFileAsDataUrl'
+import { WINE_CATEGORY_OPTIONS } from '../utils/wineFormOptions'
 import { ActiveStatusDot } from './ActiveStatusDot'
 import { Modal } from './Modal'
+
+const MAX_PHOTOS = 3
 
 interface Entity {
   id: string
   name: string
   invoiceName?: string | null
   active: boolean
+  producer?: string | null
   country?: string | null
   volumeMl?: number | null
   category?: WineCategory | null
-  imageDataUrl?: string | null
+  imageDataUrls?: string[]
 }
 
 interface EntityInput {
   name: string
   invoiceName?: string | null
+  producer?: string | null
   country?: string
   volumeMl?: number | null
   category?: WineCategory | null
-  imageDataUrl?: string | null
+  imageDataUrls?: string[]
 }
 
 interface EntityManagerProps {
@@ -51,46 +55,124 @@ interface EntityManagerProps {
   onAutoOpened?: () => void
   /** Called whenever the detail popup closes, however it closes (Close button, overlay/Escape, or a successful Save/Delete) - e.g. to navigate back to wherever a deep link came from. */
   onDetailClosed?: () => void
+  /** Sends the currently-added photos to OpenAI and returns suggested field values to pre-fill (never auto-saved - the user still reviews/edits before creating). Wines only, new-item modal only. */
+  onScanWine?: (imageDataUrls: string[]) => Promise<{
+    name: string | null
+    producer: string | null
+    volumeMl: number | null
+    country: string | null
+    category: WineCategory | null
+  }>
 }
 
-function ImageField({
+/**
+ * Two separate file inputs, not one: a `multiple` input is how "choose
+ * several from the library at once" works, but mobile browsers drop the
+ * "Take Photo" option from the picker sheet entirely once `multiple` is set
+ * (you can't multi-select from a camera). Splitting camera capture and
+ * library choice into their own buttons/inputs is the only way to keep both.
+ */
+function PhotoPickerButtons({
+  onFilesSelected,
+  primary,
+  disabled,
+}: {
+  onFilesSelected: (files: File[]) => void
+  primary?: boolean
+  disabled?: boolean
+}) {
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const libraryInputRef = useRef<HTMLInputElement>(null)
+
+  function handleChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    if (files.length > 0) onFilesSelected(files)
+  }
+
+  const primaryClass = `btn btn--small${primary ? ' btn--primary' : ''}`
+
+  return (
+    <div className="picker">
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleChange}
+        style={{ display: 'none' }}
+      />
+      <input ref={libraryInputRef} type="file" accept="image/*" multiple onChange={handleChange} style={{ display: 'none' }} />
+      <button type="button" className={primaryClass} disabled={disabled} onClick={() => cameraInputRef.current?.click()}>
+        📷 Take Photo
+      </button>
+      <button type="button" className="btn btn--small" disabled={disabled} onClick={() => libraryInputRef.current?.click()}>
+        Choose Photos
+      </button>
+    </div>
+  )
+}
+
+function ImagesField({
   label,
-  imageDataUrl,
+  imageDataUrls,
   onChange,
 }: {
   label: string
-  imageDataUrl: string | null
-  onChange: (dataUrl: string | null) => void
+  imageDataUrls: string[]
+  onChange: (dataUrls: string[]) => void
 }) {
-  const inputRef = useRef<HTMLInputElement>(null)
+  async function handleFiles(files: File[]) {
+    const dataUrls = await Promise.all(files.map(readFileAsDataUrl))
+    onChange([...imageDataUrls, ...dataUrls].slice(0, MAX_PHOTOS))
+  }
 
-  async function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file) return
-    const dataUrl = await readFileAsDataUrl(file)
-    onChange(dataUrl)
+  function removeAt(index: number) {
+    onChange(imageDataUrls.filter((_, i) => i !== index))
   }
 
   return (
     <div className="field">
-      <label>{label}</label>
-      <div className="picker">
-        {imageDataUrl ? (
-          <img src={imageDataUrl} alt="" className="entity-thumb entity-thumb--large" />
-        ) : (
-          <div className="entity-thumb entity-thumb--large entity-thumb--empty" />
-        )}
-        <input ref={inputRef} type="file" accept="image/*" onChange={handleChange} style={{ display: 'none' }} />
-        <button type="button" className="btn btn--small" onClick={() => inputRef.current?.click()}>
-          {imageDataUrl ? 'Change photo' : 'Upload photo'}
-        </button>
-        {imageDataUrl && (
-          <button type="button" className="btn btn--small" onClick={() => onChange(null)}>
-            Remove
-          </button>
-        )}
+      <label>
+        {label} ({imageDataUrls.length}/{MAX_PHOTOS})
+      </label>
+      <div className="entity-thumb-row">
+        {imageDataUrls.map((url, index) => (
+          <div key={index} className="entity-thumb-slot">
+            <img src={url} alt="" className="entity-thumb entity-thumb--large" />
+            <button type="button" className="btn btn--small" onClick={() => removeAt(index)}>
+              Remove
+            </button>
+          </div>
+        ))}
       </div>
+      {imageDataUrls.length < MAX_PHOTOS && (
+        <div style={{ marginTop: 8 }}>
+          <PhotoPickerButtons onFilesSelected={handleFiles} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Top-of-modal shortcut so scanning is the first thing a user sees, before any manual fields - separate from the Photos field further down, which stays focused on reviewing/managing the saved set. */
+function ScanBottleButton({
+  isScanning,
+  error,
+  onFilesSelected,
+}: {
+  isScanning: boolean
+  error: string | null
+  onFilesSelected: (files: File[]) => void
+}) {
+  return (
+    <div className="scan-bottle-cta">
+      <p className="page-header__meta" style={{ marginTop: 0, marginBottom: 8 }}>
+        Scan a bottle: Name, Producer, Country, Volume, and Category below get filled in for review.
+      </p>
+      <PhotoPickerButtons onFilesSelected={onFilesSelected} primary disabled={isScanning} />
+      {isScanning && <p className="page-header__meta" style={{ marginTop: 6 }}>Scanning bottle...</p>}
+      {error && <p className="notice notice--error">{error}</p>}
     </div>
   )
 }
@@ -115,24 +197,29 @@ export function EntityManager({
   autoOpenId,
   onAutoOpened,
   onDetailClosed,
+  onScanWine,
 }: EntityManagerProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newInvoiceName, setNewInvoiceName] = useState('')
+  const [newProducer, setNewProducer] = useState('')
   const [newCountry, setNewCountry] = useState('')
   const [newVolume, setNewVolume] = useState('')
   const [newCategory, setNewCategory] = useState<WineCategory | ''>('')
-  const [newImage, setNewImage] = useState<string | null>(null)
+  const [newImages, setNewImages] = useState<string[]>([])
   const [createError, setCreateError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanError, setScanError] = useState<string | null>(null)
 
   const [detailItem, setDetailItem] = useState<Entity | null>(null)
   const [detailName, setDetailName] = useState('')
   const [detailInvoiceName, setDetailInvoiceName] = useState('')
+  const [detailProducer, setDetailProducer] = useState('')
   const [detailCountry, setDetailCountry] = useState('')
   const [detailVolume, setDetailVolume] = useState('')
   const [detailCategory, setDetailCategory] = useState<WineCategory | ''>('')
-  const [detailImage, setDetailImage] = useState<string | null>(null)
+  const [detailImages, setDetailImages] = useState<string[]>([])
   const [detailError, setDetailError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -140,12 +227,40 @@ export function EntityManager({
   function openCreateModal() {
     setNewName('')
     setNewInvoiceName('')
+    setNewProducer('')
     setNewCountry('')
     setNewVolume('')
     setNewCategory('')
-    setNewImage(null)
+    setNewImages([])
     setCreateError(null)
+    setScanError(null)
     setIsCreateOpen(true)
+  }
+
+  async function runScan(images: string[]) {
+    if (!onScanWine || images.length === 0) return
+    setScanError(null)
+    setIsScanning(true)
+    try {
+      const result = await onScanWine(images)
+      if (result.name) setNewName(result.name)
+      if (result.producer) setNewProducer(result.producer)
+      if (result.country) setNewCountry(result.country)
+      if (result.volumeMl) setNewVolume(String(result.volumeMl))
+      if (result.category) setNewCategory(result.category)
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'Could not scan the bottle.')
+    } finally {
+      setIsScanning(false)
+    }
+  }
+
+  /** The top-of-modal shortcut: picking photo(s) here both adds them to the Photos field below and scans them immediately, so a user can go straight from empty modal to filled-in fields. */
+  async function handleTopScan(files: File[]) {
+    const dataUrls = await Promise.all(files.map(readFileAsDataUrl))
+    const updatedImages = [...newImages, ...dataUrls].slice(0, MAX_PHOTOS)
+    setNewImages(updatedImages)
+    await runScan(updatedImages)
   }
 
   async function handleCreate(event: SubmitEvent<HTMLFormElement>) {
@@ -156,10 +271,11 @@ export function EntityManager({
       await onCreate({
         name: newName,
         invoiceName: newInvoiceName,
+        producer: newProducer,
         country: newCountry,
         volumeMl: newVolume ? Number(newVolume) : null,
         category: newCategory || null,
-        imageDataUrl: newImage,
+        imageDataUrls: await normalizeImagesForSave(newImages),
       })
       setIsCreateOpen(false)
     } catch (err) {
@@ -173,10 +289,11 @@ export function EntityManager({
     setDetailItem(entity)
     setDetailName(entity.name)
     setDetailInvoiceName(entity.invoiceName ?? '')
+    setDetailProducer(entity.producer ?? '')
     setDetailCountry(entity.country ?? '')
     setDetailVolume(entity.volumeMl != null ? String(entity.volumeMl) : '')
     setDetailCategory(entity.category ?? '')
-    setDetailImage(entity.imageDataUrl ?? null)
+    setDetailImages(entity.imageDataUrls ?? [])
     setDetailError(null)
   }
 
@@ -203,10 +320,11 @@ export function EntityManager({
       await onUpdate(detailItem.id, {
         name: detailName,
         invoiceName: detailInvoiceName,
+        producer: detailProducer,
         country: detailCountry,
         volumeMl: detailVolume ? Number(detailVolume) : null,
         category: detailCategory || null,
-        imageDataUrl: detailImage,
+        imageDataUrls: await normalizeImagesForSave(detailImages),
       })
       closeDetail()
     } catch (err) {
@@ -244,13 +362,6 @@ export function EntityManager({
 
   return (
     <div>
-      {showWineDetails && (
-        <datalist id="wine-volume-ml-presets">
-          {VOLUME_ML_PRESETS.map((ml) => (
-            <option key={ml} value={ml} />
-          ))}
-        </datalist>
-      )}
       <div className="page-header">
         <h2>{title}</h2>
         <button type="button" className="btn btn--primary" onClick={openCreateModal}>
@@ -259,15 +370,15 @@ export function EntityManager({
       </div>
 
       {isCreateOpen && (
-        <Modal title={`New ${singularLabel}`} onClose={() => setIsCreateOpen(false)}>
+        <Modal title={`New ${singularLabel}`} onClose={() => setIsCreateOpen(false)} size="large">
           <form className="stack" onSubmit={handleCreate}>
+            {showImage && onScanWine && <ScanBottleButton isScanning={isScanning} error={scanError} onFilesSelected={handleTopScan} />}
             <div className="field">
               <label htmlFor="new-entity-name">Name</label>
               <input
                 id="new-entity-name"
                 value={newName}
                 onChange={(event) => setNewName(event.target.value)}
-                autoFocus
               />
             </div>
             <div className="field">
@@ -279,6 +390,17 @@ export function EntityManager({
                 placeholder="Name as it appears on invoices, if different"
               />
             </div>
+            {showWineDetails && (
+              <div className="field">
+                <label htmlFor="new-entity-producer">Producer</label>
+                <input
+                  id="new-entity-producer"
+                  value={newProducer}
+                  onChange={(event) => setNewProducer(event.target.value)}
+                  placeholder="e.g. Caymus Vineyards"
+                />
+              </div>
+            )}
             {showCountry && (
               <div className="field">
                 <label htmlFor="new-entity-country">Country</label>
@@ -297,7 +419,6 @@ export function EntityManager({
                   type="number"
                   min="1"
                   step="1"
-                  list="wine-volume-ml-presets"
                   value={newVolume}
                   onChange={(event) => setNewVolume(event.target.value)}
                   placeholder="e.g. 750"
@@ -321,7 +442,7 @@ export function EntityManager({
                 </select>
               </div>
             )}
-            {showImage && <ImageField label="Photo" imageDataUrl={newImage} onChange={setNewImage} />}
+            {showImage && <ImagesField label="Photos" imageDataUrls={newImages} onChange={setNewImages} />}
             {createError && <p className="notice notice--error">{createError}</p>}
             <div className="picker" style={{ justifyContent: 'flex-end' }}>
               <button type="button" className="btn" onClick={() => setIsCreateOpen(false)}>
@@ -336,7 +457,7 @@ export function EntityManager({
       )}
 
       {detailItem && (
-        <Modal title={detailItem.name} onClose={closeDetail}>
+        <Modal title={detailItem.name} onClose={closeDetail} size="large">
           <div className="stack">
             <div className="field">
               <label htmlFor="detail-entity-name">Name</label>
@@ -344,7 +465,6 @@ export function EntityManager({
                 id="detail-entity-name"
                 value={detailName}
                 onChange={(event) => setDetailName(event.target.value)}
-                autoFocus
               />
             </div>
             <div className="field">
@@ -356,6 +476,17 @@ export function EntityManager({
                 placeholder="Name as it appears on invoices, if different"
               />
             </div>
+            {showWineDetails && (
+              <div className="field">
+                <label htmlFor="detail-entity-producer">Producer</label>
+                <input
+                  id="detail-entity-producer"
+                  value={detailProducer}
+                  onChange={(event) => setDetailProducer(event.target.value)}
+                  placeholder="e.g. Caymus Vineyards"
+                />
+              </div>
+            )}
             {showCountry && (
               <div className="field">
                 <label htmlFor="detail-entity-country">Country</label>
@@ -374,7 +505,6 @@ export function EntityManager({
                   type="number"
                   min="1"
                   step="1"
-                  list="wine-volume-ml-presets"
                   value={detailVolume}
                   onChange={(event) => setDetailVolume(event.target.value)}
                   placeholder="e.g. 750"
@@ -398,7 +528,7 @@ export function EntityManager({
                 </select>
               </div>
             )}
-            {showImage && <ImageField label="Photo" imageDataUrl={detailImage} onChange={setDetailImage} />}
+            {showImage && <ImagesField label="Photos" imageDataUrls={detailImages} onChange={setDetailImages} />}
 
             <div className="match-row">
               <span className={`badge ${detailItem.active ? 'badge--confirmed' : 'badge--neutral'}`}>
@@ -447,7 +577,7 @@ export function EntityManager({
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
         />
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16 }}>
           <input
             type="checkbox"
             checked={includeInactive}

@@ -38,10 +38,11 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
     async create(input: {
       name: string
       invoiceName?: string | null
+      producer?: string | null
       country?: string | null
       volumeMl?: number | null
       category?: Wine['category']
-      imageDataUrl?: string | null
+      imageDataUrls?: string[]
     }): Promise<Wine> {
       await delay(latencyMs)
       const name = input.name.trim()
@@ -52,10 +53,11 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
         id: createId('wine'),
         name,
         invoiceName: input.invoiceName?.trim() || null,
+        producer: input.producer?.trim() || null,
         country: input.country?.trim() || null,
         volumeMl: normalizeVolumeMl(input.volumeMl),
         category: input.category ?? null,
-        imageDataUrl: input.imageDataUrl ?? null,
+        imageDataUrls: (input.imageDataUrls ?? []).slice(0, 3),
         active: true,
         createdAt: new Date().toISOString(),
       }
@@ -68,10 +70,11 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
       input: {
         name: string
         invoiceName?: string | null
+        producer?: string | null
         country?: string | null
         volumeMl?: number | null
         category?: Wine['category']
-        imageDataUrl?: string | null
+        imageDataUrls?: string[]
       },
     ): Promise<Wine> {
       await delay(latencyMs)
@@ -82,10 +85,11 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
         ...wine,
         name,
         invoiceName: input.invoiceName?.trim() || null,
+        producer: input.producer?.trim() || null,
         country: input.country?.trim() || null,
         volumeMl: normalizeVolumeMl(input.volumeMl),
         category: input.category ?? null,
-        imageDataUrl: input.imageDataUrl !== undefined ? input.imageDataUrl : wine.imageDataUrl,
+        imageDataUrls: input.imageDataUrls !== undefined ? input.imageDataUrls.slice(0, 3) : wine.imageDataUrls,
       }))
     },
 
@@ -118,7 +122,7 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
       for (const invoice of store.invoices) {
         if (invoice.status !== 'approved') continue
         for (const line of invoice.lineItems) {
-          if (line.skuMatch.wineId !== id) continue
+          if (line.skuMatch.wineId !== id || line.excluded) continue
           const vendor = invoice.extracted.vendorMatch.vendorId
             ? store.findVendor(invoice.extracted.vendorMatch.vendorId)
             : undefined
@@ -126,8 +130,9 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
             invoiceId: invoice.id,
             date: invoice.extracted.invoiceDate,
             vendorName: vendor?.name ?? invoice.extracted.vendorMatch.vendorNameRaw,
-            quantity: line.quantity,
-            unitPrice: line.unitPrice,
+            // Folds pack size in here so callers get real per-bottle quantity/price without knowing about packs - lineTotal is untouched, still the actual dollar amount.
+            quantity: line.quantity * line.packSize,
+            unitPrice: line.unitPrice / line.packSize,
             lineTotal: line.lineTotal,
           })
         }

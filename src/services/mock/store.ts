@@ -203,7 +203,9 @@ export class MockStore {
         quantity: line.quantity,
         unitPrice: line.unitPrice,
         lineTotal: line.quantity * line.unitPrice,
+        packSize: 1,
         skuMatch: { wineId: null, confidence: null, status: 'unresolved' },
+        excluded: false,
       })),
     }
 
@@ -266,6 +268,7 @@ export class MockStore {
         quantity: number
         unitPrice: number
         lineTotal: number
+        packSize: number
       }[]
       additionalCharges: AdditionalCharge[]
     },
@@ -290,7 +293,9 @@ export class MockStore {
         quantity: line.quantity,
         unitPrice: line.unitPrice,
         lineTotal: line.lineTotal,
+        packSize: line.packSize,
         skuMatch: this.skuMatchFor(line.itemNameRaw),
+        excluded: false,
       })),
     }))
   }
@@ -310,8 +315,9 @@ export class MockStore {
     const purchased = this.invoices
       .filter((invoice) => invoice.status === 'approved')
       .flatMap((invoice) => invoice.lineItems)
-      .filter((line) => line.skuMatch.wineId === wineId)
-      .reduce((sum, line) => sum + line.quantity, 0)
+      .filter((line) => line.skuMatch.wineId === wineId && !line.excluded)
+      // A line's quantity is pack count as printed - real units received is quantity * packSize (1 for items sold individually).
+      .reduce((sum, line) => sum + line.quantity * line.packSize, 0)
 
     const wine = this.findWine(wineId)
     if (!wine?.volumeMl) return purchased

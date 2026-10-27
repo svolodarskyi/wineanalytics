@@ -24,7 +24,8 @@ describe('WineDetailPage', () => {
     })
 
     expect(await screen.findByRole('heading', { name: 'Untouched Wine' })).toBeInTheDocument()
-    expect(await screen.findByText('0 bottles')).toBeInTheDocument()
+    const endingBottlesLabel = await screen.findByText('Ending Bottles')
+    expect(endingBottlesLabel.closest('div')).toHaveTextContent('0')
     expect(screen.getByRole('link', { name: 'Purchases' })).toHaveAttribute('href', `/wines/${wine.id}/purchases`)
     expect(screen.getByRole('link', { name: 'Sales' })).toHaveAttribute('href', `/wines/${wine.id}/sales`)
   })
@@ -55,6 +56,7 @@ describe('WineDetailPage', () => {
     })
 
     const totalBottles = processed!.lineItems.reduce((sum, l) => sum + l.quantity, 0)
-    expect(await screen.findByText(`${totalBottles - 1} bottles`)).toBeInTheDocument()
+    const endingBottlesLabel = await screen.findByText('Ending Bottles')
+    expect(endingBottlesLabel.closest('div')).toHaveTextContent(String(totalBottles - 1))
   })
 })

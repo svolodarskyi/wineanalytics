@@ -1,8 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { describe, expect, it, vi } from 'vitest'
-import type { OpenAiService } from '../../types'
+import { describe, expect, it } from 'vitest'
 import { createSupabaseInvoiceService } from '../invoiceService'
-import { fakeStorage, flushAsync, routedSupabaseFrom } from './testHelpers'
+import { fakeStorage, routedSupabaseFrom } from './testHelpers'
 
 const NEW_ROW = {
   id: 'inv1',
@@ -26,151 +25,167 @@ function supabaseWithFrom(from: ReturnType<typeof routedSupabaseFrom>, storage =
   return { from, storage } as unknown as SupabaseClient
 }
 
-function noopOpenAi(): OpenAiService {
-  return { extractInvoice: vi.fn(), listLogs: vi.fn() }
-}
-
 describe('supabase invoice service', () => {
-  it('upload (pdf) inserts the row, uploads the file, and lands fully unresolved with no OpenAI call', async () => {
-    const openai = noopOpenAi()
-    const from = routedSupabaseFrom({
-      wine_invoices: [{ data: NEW_ROW }, { error: null }],
-      wine_vendors: [{ data: [] }],
-    })
+  // OCR + matching + line-item writes now happen server-side, kicked off by a
+  // Postgres trigger on this insert (see supabase/functions/process-invoice) -
+  // upload() itself just uploads the file and inserts the row.
+  it('upload inserts the row, uploads the file, and returns it as processing with no further writes', async () => {
+    const from = routedSupabaseFrom({ wine_invoices: [{ data: { ...NEW_ROW, file_type: 'image' } }] })
     const storage = fakeStorage()
-    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from, storage), openai)
+    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from, storage))
 
-    const invoice = await invoices.upload({ fileName: 'invoice.pdf', fileType: 'pdf', fileDataUrl: 'data:application/pdf;base64,AA==' })
+    const invoice = await invoices.upload({ fileName: 'invoice.jpg', fileType: 'image', fileDataUrl: 'data:image/jpeg;base64,AA==' })
+
     expect(invoice.status).toBe('processing')
     expect(storage.bucketApi.upload).toHaveBeenCalled()
-    expect(openai.extractInvoice).not.toHaveBeenCalled()
-
-    await flushAsync()
-    const invoicesUpdateBuilder = from.mock.results[2].value
-    expect(invoicesUpdateBuilder.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'not_approved', vendor_name_raw: '', vendor_match_status: 'unresolved' }),
-    )
+    expect(from).toHaveBeenCalledTimes(1)
   })
 
-  it('upload (image) extracts via OpenAI and writes line items + additional charges on success', async () => {
-    const openai: OpenAiService = {
-      extractInvoice: vi.fn().mockResolvedValue({
-        vendorNameRaw: 'Acme Wine Co',
-        invoiceDate: '2026-01-15',
-        totalAmount: 55,
-        lines: [{ itemNameRaw: 'Test Wine', quantity: 2, unitPrice: 25, lineTotal: 50 }],
-        additionalCharges: [{ description: 'Sales Tax', amount: 5 }],
-      }),
-      listLogs: vi.fn(),
-    }
-    const from = routedSupabaseFrom({
-      wine_invoices: [{ data: { ...NEW_ROW, file_type: 'image' } }, { error: null }],
-      wine_vendors: [{ data: [] }],
-      wine_wines: [{ data: [] }],
-      wine_invoice_line_items: [{ error: null }],
-      wine_invoice_additional_charges: [{ error: null }],
-    })
-    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), openai)
+  it('get requests line items ordered by position, so rows can\'t reshuffle between refetches', async () => {
+    // Regression: without an explicit ORDER BY, Postgres/PostgREST make no
+    // guarantee about the order a joined resource comes back in - any
+    // refetch (confirming a match, excluding a line, editing pack size)
+    // could silently return the line items in a different order than
+    // before, making rows visibly jump around on the review page even
+    // though nothing about them changed.
+    const from = routedSupabaseFrom({ wine_invoices: [{ data: NEW_ROW }] })
+    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
 
-    await invoices.upload({ fileName: 'invoice.jpg', fileType: 'image', fileDataUrl: 'data:image/jpeg;base64,AA==' })
-    await flushAsync()
+    await invoices.get('inv1')
 
-    expect(openai.extractInvoice).toHaveBeenCalledWith(
-      expect.objectContaining({ fileName: 'invoice.jpg', invoiceId: expect.any(String) }),
-    )
-    // Line items/charges are written before the final invoice status update
-    // (see completeProcessingFromExtraction's doc comment) - insert, insert, then update.
-    const lineItemsBuilder = from.mock.results[3].value
-    expect(lineItemsBuilder.insert).toHaveBeenCalledWith([
-      expect.objectContaining({ item_name_raw: 'Test Wine', quantity: 2 }),
-    ])
-    const chargesBuilder = from.mock.results[4].value
-    expect(chargesBuilder.insert).toHaveBeenCalledWith([
-      expect.objectContaining({ description: 'Sales Tax', amount: 5 }),
-    ])
-    const invoicesUpdateBuilder = from.mock.results[5].value
-    expect(invoicesUpdateBuilder.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'not_approved', vendor_name_raw: 'Acme Wine Co' }),
-    )
-  })
-
-  it('upload (image) lands fully unresolved when OpenAI extraction fails', async () => {
-    const openai: OpenAiService = {
-      extractInvoice: vi.fn().mockRejectedValue(new Error('no key')),
-      listLogs: vi.fn(),
-    }
-    const from = routedSupabaseFrom({
-      wine_invoices: [{ data: { ...NEW_ROW, file_type: 'image' } }, { error: null }],
-      wine_vendors: [{ data: [] }],
-    })
-    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), openai)
-
-    await invoices.upload({ fileName: 'invoice.jpg', fileType: 'image', fileDataUrl: 'data:image/jpeg;base64,AA==' })
-    await flushAsync()
-
-    const invoicesUpdateBuilder = from.mock.results[2].value
-    expect(invoicesUpdateBuilder.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'not_approved', vendor_name_raw: '' }),
-    )
-  })
-
-  it('upload (image) logs a diagnostic instead of leaving the invoice silently stuck when writing line items fails', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const openai: OpenAiService = {
-      extractInvoice: vi.fn().mockResolvedValue({
-        vendorNameRaw: 'Acme Wine Co',
-        invoiceDate: '2026-01-15',
-        totalAmount: 50,
-        lines: [{ itemNameRaw: 'Test Wine', quantity: 2, unitPrice: 25, lineTotal: 50 }],
-        additionalCharges: [],
-      }),
-      listLogs: vi.fn(),
-    }
-    const from = routedSupabaseFrom({
-      wine_invoices: [{ data: { ...NEW_ROW, file_type: 'image' } }],
-      wine_vendors: [{ data: [] }],
-      wine_wines: [{ data: [] }],
-      wine_invoice_line_items: [{ error: { message: 'insert failed' } }],
-      wine_openai_logs: [{ error: null }],
-    })
-    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), openai)
-
-    await invoices.upload({ fileName: 'invoice.jpg', fileType: 'image', fileDataUrl: 'data:image/jpeg;base64,AA==' })
-    await flushAsync()
-
-    expect(consoleError).toHaveBeenCalled()
-    const logsBuilder = from.mock.results[4].value
-    expect(logsBuilder.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        invoice_id: expect.any(String),
-        model: 'db-write',
-        error: expect.stringContaining('insert failed'),
-      }),
-    )
-    // The invoice row was only ever inserted, never updated - it's left in "processing" rather than a half-done state.
-    const invoiceTableCalls = from.mock.calls.filter((call) => call[0] === 'wine_invoices').length
-    expect(invoiceTableCalls).toBe(1)
-
-    consoleError.mockRestore()
+    const builder = from.mock.results[0].value
+    expect(builder.order).toHaveBeenCalledWith('position', { foreignTable: 'wine_invoice_line_items' })
   })
 
   it('selectVendorMatch maps a foreign-key violation to "Vendor not found."', async () => {
     const from = routedSupabaseFrom({
-      wine_invoices: [{ error: { message: 'violates foreign key constraint', code: '23503' } }],
+      wine_invoices: [{ error: null }, { error: { message: 'violates foreign key constraint', code: '23503' } }],
     })
-    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
+    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
     await expect(invoices.selectVendorMatch('inv1', 'missing-vendor')).rejects.toThrow(/vendor not found/i)
   })
 
-  it('updateInvoiceDate corrects the extracted date by hand', async () => {
+  it('updateInvoiceDate corrects the extracted date by hand, and logs the correction', async () => {
     const from = routedSupabaseFrom({
-      wine_invoices: [{ error: null }, { data: { ...NEW_ROW, invoice_date: '2026-03-15' } }],
+      wine_invoices: [
+        { error: null },
+        { data: { invoice_date: '2026-01-01' } },
+        { error: null },
+        { data: { ...NEW_ROW, invoice_date: '2026-03-15' } },
+      ],
+      wine_invoice_corrections: [{ error: null }],
     })
-    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
+    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
     const updated = await invoices.updateInvoiceDate('inv1', '2026-03-15')
     expect(updated.extracted.invoiceDate).toBe('2026-03-15')
-    const updateBuilder = from.mock.results[0].value
+    const updateBuilder = from.mock.results[2].value
     expect(updateBuilder.update).toHaveBeenCalledWith({ invoice_date: '2026-03-15' })
+    const correctionBuilder = from.mock.results[3].value
+    expect(correctionBuilder.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ invoice_id: 'inv1', field_name: 'invoice_date', old_value: '2026-01-01', new_value: '2026-03-15' }),
+    )
+  })
+
+  it('updateInvoiceDate does not log a correction when the date is unchanged', async () => {
+    const from = routedSupabaseFrom({
+      wine_invoices: [
+        { error: null },
+        { data: { invoice_date: '2026-03-15' } },
+        { error: null },
+        { data: { ...NEW_ROW, invoice_date: '2026-03-15' } },
+      ],
+    })
+    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
+    await invoices.updateInvoiceDate('inv1', '2026-03-15')
+    expect(from).not.toHaveBeenCalledWith('wine_invoice_corrections')
+  })
+
+  it('editing an invoice reverts its approval status, so it needs approving again (no-ops when not currently approved)', async () => {
+    const from = routedSupabaseFrom({
+      // Same date in/out so logCorrection is a no-op and doesn't need its own queued table.
+      wine_invoices: [{ error: null }, { data: { invoice_date: '2026-01-01' } }, { error: null }, { data: NEW_ROW }],
+    })
+    const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
+    await invoices.updateInvoiceDate('inv1', '2026-01-01')
+
+    const revertBuilder = from.mock.results[0].value
+    expect(revertBuilder.update).toHaveBeenCalledWith({ status: 'not_approved', approved_at: null })
+    expect(revertBuilder.eq).toHaveBeenCalledWith('id', 'inv1')
+    expect(revertBuilder.eq).toHaveBeenCalledWith('status', 'approved')
+  })
+
+  describe('updateLineItem', () => {
+    it('recomputes lineTotal and logs corrections for volume, quantity, unit price, and pack size', async () => {
+      const from = routedSupabaseFrom({
+        wine_invoice_line_items: [
+          { data: { quantity: 1, unit_price: 10, volume_ml_raw: 750, pack_size: 1 } },
+          { error: null },
+        ],
+        wine_invoices: [
+          { error: null },
+          {
+            data: {
+              ...NEW_ROW,
+              wine_invoice_line_items: [
+                {
+                  id: 'li1',
+                  item_name_raw: 'Wine A',
+                  quantity: 3,
+                  unit_price: 12,
+                  line_total: 36,
+                  volume_ml_raw: 1500,
+                  pack_size: 6,
+                  wine_id: 'w1',
+                  sku_confidence: 'high',
+                  sku_match_status: 'suggested',
+                },
+              ],
+            },
+          },
+        ],
+        wine_invoice_corrections: [{ error: null }, { error: null }, { error: null }, { error: null }],
+      })
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
+
+      const updated = await invoices.updateLineItem('inv1', 'li1', { volumeMl: 1500, quantity: 3, unitPrice: 12, packSize: 6 })
+
+      expect(updated.lineItems[0].lineTotal).toBe(36)
+      const updateBuilder = from.mock.results[2].value
+      expect(updateBuilder.update).toHaveBeenCalledWith({
+        quantity: 3,
+        unit_price: 12,
+        line_total: 36,
+        volume_ml_raw: 1500,
+        pack_size: 6,
+      })
+      const quantityCorrection = from.mock.results[3].value
+      expect(quantityCorrection.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ field_name: 'quantity', old_value: '1', new_value: '3' }),
+      )
+      const priceCorrection = from.mock.results[4].value
+      expect(priceCorrection.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ field_name: 'unit_price', old_value: '10', new_value: '12' }),
+      )
+      const volumeCorrection = from.mock.results[5].value
+      expect(volumeCorrection.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ field_name: 'volume_ml', old_value: '750', new_value: '1500' }),
+      )
+      const packSizeCorrection = from.mock.results[6].value
+      expect(packSizeCorrection.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ field_name: 'pack_size', old_value: '1', new_value: '6' }),
+      )
+    })
+
+    it('rejects an unknown line item id', async () => {
+      const from = routedSupabaseFrom({
+        wine_invoices: [{ error: null }],
+        wine_invoice_line_items: [{ data: null }],
+      })
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
+      await expect(
+        invoices.updateLineItem('inv1', 'missing', { volumeMl: null, quantity: 1, unitPrice: 1, packSize: 1 }),
+      ).rejects.toThrow(/not found/i)
+    })
   })
 
   describe('approve', () => {
@@ -186,13 +201,13 @@ describe('supabase invoice service', () => {
 
     it('rejects while still processing', async () => {
       const from = routedSupabaseFrom({ wine_invoices: [{ data: { ...NEW_ROW, status: 'processing' } }] })
-      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
       await expect(invoices.approve('inv1')).rejects.toThrow(/still processing/i)
     })
 
     it('rejects when the vendor is unresolved', async () => {
       const from = routedSupabaseFrom({ wine_invoices: [{ data: { ...NEW_ROW, status: 'not_approved' } }] })
-      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
       await expect(invoices.approve('inv1')).rejects.toThrow(/vendor/i)
     })
 
@@ -209,8 +224,32 @@ describe('supabase invoice service', () => {
           },
         ],
       })
-      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
       await expect(invoices.approve('inv1')).rejects.toThrow(/wine sku/i)
+    })
+
+    it('allows approval when the only unresolved line item is excluded', async () => {
+      const from = routedSupabaseFrom({
+        wine_invoices: [
+          {
+            data: {
+              ...NEW_ROW,
+              status: 'not_approved',
+              vendor_id: 'v1',
+              vendor_match_status: 'suggested',
+              wine_invoice_line_items: [
+                { ...resolvedInvoiceRow.wine_invoice_line_items[0], wine_id: null, sku_match_status: 'unresolved', excluded: true },
+              ],
+            },
+          },
+          { error: null },
+          { data: { ...resolvedInvoiceRow, status: 'approved' } },
+        ],
+        wine_invoice_line_items: [{ error: null }],
+      })
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
+      const approved = await invoices.approve('inv1')
+      expect(approved.status).toBe('approved')
     })
 
     it('approves, auto-confirming suggested matches, and is idempotent', async () => {
@@ -222,7 +261,7 @@ describe('supabase invoice service', () => {
         ],
         wine_invoice_line_items: [{ error: null }],
       })
-      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
 
       const approved = await invoices.approve('inv1')
       expect(approved.status).toBe('approved')
@@ -237,10 +276,36 @@ describe('supabase invoice service', () => {
 
     it('returns the invoice as-is without further writes when already approved', async () => {
       const from = routedSupabaseFrom({ wine_invoices: [{ data: { ...resolvedInvoiceRow, status: 'approved' } }] })
-      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
       const result = await invoices.approve('inv1')
       expect(result.status).toBe('approved')
       expect(from).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('setLineItemExcluded', () => {
+    it('writes the excluded flag and returns the refreshed invoice', async () => {
+      const from = routedSupabaseFrom({
+        wine_invoice_line_items: [{ error: null }],
+        wine_invoices: [
+          { error: null },
+          {
+            data: {
+              ...NEW_ROW,
+              wine_invoice_line_items: [
+                { id: 'li1', item_name_raw: 'Wine A', quantity: 1, unit_price: 10, line_total: 10, wine_id: null, sku_confidence: null, sku_match_status: 'unresolved', excluded: true },
+              ],
+            },
+          },
+        ],
+      })
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
+
+      const updated = await invoices.setLineItemExcluded('inv1', 'li1', true)
+
+      expect(updated.lineItems[0].excluded).toBe(true)
+      const updateBuilder = from.mock.results[1].value
+      expect(updateBuilder.update).toHaveBeenCalledWith({ excluded: true })
     })
   })
 
@@ -250,7 +315,7 @@ describe('supabase invoice service', () => {
         wine_invoices: [{ data: { status: 'not_approved', file_path: 'inv1.pdf' } }, { error: null }],
       })
       const storage = fakeStorage()
-      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from, storage), noopOpenAi())
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from, storage))
 
       await invoices.discard('inv1')
 
@@ -264,20 +329,21 @@ describe('supabase invoice service', () => {
       const from = routedSupabaseFrom({
         wine_invoices: [{ data: { status: 'processing', file_path: 'inv1.pdf' } }, { error: null }],
       })
-      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
       await expect(invoices.discard('inv1')).resolves.toBeUndefined()
     })
 
-    it('rejects discarding an approved invoice, without deleting', async () => {
-      const from = routedSupabaseFrom({ wine_invoices: [{ data: { status: 'approved', file_path: 'inv1.pdf' } }] })
-      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
-      await expect(invoices.discard('inv1')).rejects.toThrow(/cannot be discarded/i)
-      expect(from).toHaveBeenCalledTimes(1)
+    it('deletes an approved invoice too - discard is allowed regardless of approval status', async () => {
+      const from = routedSupabaseFrom({
+        wine_invoices: [{ data: { status: 'approved', file_path: 'inv1.pdf' } }, { error: null }],
+      })
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
+      await expect(invoices.discard('inv1')).resolves.toBeUndefined()
     })
 
     it('rejects an unknown invoice id', async () => {
       const from = routedSupabaseFrom({ wine_invoices: [{ data: null }] })
-      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from), noopOpenAi())
+      const invoices = createSupabaseInvoiceService(supabaseWithFrom(from))
       await expect(invoices.discard('missing')).rejects.toThrow(/not found/i)
     })
   })

@@ -1,8 +1,20 @@
 import type { AdditionalCharge, OpenAiUsage, WineCategory } from '../../types'
-import { estimateCostUsd, OPENAI_MODEL } from './pricing'
-import { INVOICE_EXTRACTION_PROMPT } from './prompt'
+import { estimateCostUsd, INVOICE_OCR_MODEL, WINE_SCAN_MODEL } from './pricing'
+import { INVOICE_EXTRACTION_PROMPT, WINE_SCAN_PROMPT } from './prompt'
 
-const WINE_CATEGORIES: readonly WineCategory[] = ['red', 'white', 'rose', 'sparkling', 'dessert', 'fortified', 'other']
+const WINE_CATEGORIES: readonly WineCategory[] = [
+  'red',
+  'white',
+  'rose',
+  'sparkling',
+  'dessert',
+  'fortified',
+  'beer',
+  'spirits',
+  'cider',
+  'non_alcoholic',
+  'other',
+]
 
 export interface OpenAiExtractedLineItem {
   itemName: string
@@ -11,6 +23,7 @@ export interface OpenAiExtractedLineItem {
   quantity: number
   unitPrice: number
   lineTotal: number
+  packSize: number
 }
 
 export interface OpenAiExtractedInvoice {
@@ -21,8 +34,16 @@ export interface OpenAiExtractedInvoice {
   additionalCharges: AdditionalCharge[]
 }
 
-export interface OpenAiExtractionResult {
-  parsed: OpenAiExtractedInvoice
+export interface OpenAiExtractedWine {
+  name: string | null
+  producer: string | null
+  volumeMl: number | null
+  country: string | null
+  category: WineCategory | null
+}
+
+export interface OpenAiExtractionResult<T> {
+  parsed: T
   /** Full chat-completion response body, kept for the Settings debug log. */
   responseJson: unknown
   usage: OpenAiUsage
@@ -40,24 +61,39 @@ function toPositiveIntOrNull(value: unknown): number | null {
   return Number.isFinite(num) && num > 0 ? Math.round(num) : null
 }
 
+function toTrimmedStringOrNull(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value : null
+}
+
+function toCategoryOrNull(value: unknown): WineCategory | null {
+  return WINE_CATEGORIES.includes(value as WineCategory) ? (value as WineCategory) : null
+}
+
+/** Units per pack (a "6-pack", "case of 24") - 1 (sold individually) for anything unparseable or less than 1. */
+function toPackSize(value: unknown): number {
+  const num = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(num) && num >= 1 ? Math.round(num) : 1
+}
+
 /** The model is instructed to return this shape, but never trust it blindly - coerce defensively. */
 function coerceExtractedInvoice(value: unknown): OpenAiExtractedInvoice {
   const obj = (value ?? {}) as Record<string, unknown>
   const rawLineItems = Array.isArray(obj.lineItems) ? obj.lineItems : []
   const rawAdditionalCharges = Array.isArray(obj.additionalCharges) ? obj.additionalCharges : []
   return {
-    vendorName: typeof obj.vendorName === 'string' && obj.vendorName.trim() ? obj.vendorName : null,
-    invoiceDate: typeof obj.invoiceDate === 'string' && obj.invoiceDate.trim() ? obj.invoiceDate : null,
+    vendorName: toTrimmedStringOrNull(obj.vendorName),
+    invoiceDate: toTrimmedStringOrNull(obj.invoiceDate),
     totalAmount: toNumber(obj.totalAmount),
     lineItems: rawLineItems.map((item) => {
       const line = (item ?? {}) as Record<string, unknown>
       return {
         itemName: typeof line.itemName === 'string' ? line.itemName : 'Unknown item',
         volumeMl: toPositiveIntOrNull(line.volumeMl),
-        category: WINE_CATEGORIES.includes(line.category as WineCategory) ? (line.category as WineCategory) : null,
+        category: toCategoryOrNull(line.category),
         quantity: toNumber(line.quantity),
         unitPrice: toNumber(line.unitPrice),
         lineTotal: toNumber(line.lineTotal),
+        packSize: toPackSize(line.packSize),
       }
     }),
     additionalCharges: rawAdditionalCharges.map((charge) => {
@@ -70,12 +106,29 @@ function coerceExtractedInvoice(value: unknown): OpenAiExtractedInvoice {
   }
 }
 
+function coerceExtractedWine(value: unknown): OpenAiExtractedWine {
+  const obj = (value ?? {}) as Record<string, unknown>
+  return {
+    name: toTrimmedStringOrNull(obj.name),
+    producer: toTrimmedStringOrNull(obj.producer),
+    volumeMl: toPositiveIntOrNull(obj.volumeMl),
+    country: toTrimmedStringOrNull(obj.country),
+    category: toCategoryOrNull(obj.category),
+  }
+}
+
 /**
- * Calls OpenAI directly from the browser using VITE_OPENAI_API_KEY. This is
- * only safe for local experimentation - the key ships in the client bundle.
- * Once Supabase Edge Functions exist, this call should move server-side.
+ * Calls OpenAI's vision chat-completion endpoint directly from the browser
+ * using VITE_OPENAI_API_KEY. This is only safe for local experimentation -
+ * the key ships in the client bundle. Once Supabase Edge Functions exist,
+ * this call should move server-side.
  */
-export async function extractInvoiceImage(imageDataUrl: string): Promise<OpenAiExtractionResult> {
+async function callOpenAiJsonVision(
+  model: string,
+  systemPrompt: string,
+  userText: string,
+  imageDataUrls: string[],
+): Promise<{ responseJson: unknown; parsedContent: unknown; usage: OpenAiUsage }> {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY as string | undefined
   if (!apiKey) {
     throw new Error('VITE_OPENAI_API_KEY is not set. Add it to your local .env file to enable OpenAI extraction.')
@@ -88,15 +141,15 @@ export async function extractInvoiceImage(imageDataUrl: string): Promise<OpenAiE
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: OPENAI_MODEL,
+      model,
       response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: INVOICE_EXTRACTION_PROMPT },
+        { role: 'system', content: systemPrompt },
         {
           role: 'user',
           content: [
-            { type: 'text', text: 'Extract the invoice data from this image.' },
-            { type: 'image_url', image_url: { url: imageDataUrl } },
+            { type: 'text', text: userText },
+            ...imageDataUrls.map((url) => ({ type: 'image_url', image_url: { url } })),
           ],
         },
       ],
@@ -131,10 +184,26 @@ export async function extractInvoiceImage(imageDataUrl: string): Promise<OpenAiE
     totalTokens: toNumber(usageRaw.total_tokens),
   }
 
-  return {
-    parsed: coerceExtractedInvoice(parsedContent),
-    responseJson,
-    usage,
-    costUsd: estimateCostUsd(usage),
-  }
+  return { responseJson, parsedContent, usage }
+}
+
+export async function extractInvoiceImage(imageDataUrl: string): Promise<OpenAiExtractionResult<OpenAiExtractedInvoice>> {
+  const { responseJson, parsedContent, usage } = await callOpenAiJsonVision(
+    INVOICE_OCR_MODEL,
+    INVOICE_EXTRACTION_PROMPT,
+    'Extract the invoice data from this image.',
+    [imageDataUrl],
+  )
+  return { parsed: coerceExtractedInvoice(parsedContent), responseJson, usage, costUsd: estimateCostUsd(usage, INVOICE_OCR_MODEL) }
+}
+
+/** `imageDataUrls` should be 1-3 photos of the same bottle (front label, back label, whole bottle). */
+export async function extractWinePhotos(imageDataUrls: string[]): Promise<OpenAiExtractionResult<OpenAiExtractedWine>> {
+  const { responseJson, parsedContent, usage } = await callOpenAiJsonVision(
+    WINE_SCAN_MODEL,
+    WINE_SCAN_PROMPT,
+    'Extract this wine bottle\'s details from these photos.',
+    imageDataUrls,
+  )
+  return { parsed: coerceExtractedWine(parsedContent), responseJson, usage, costUsd: estimateCostUsd(usage, WINE_SCAN_MODEL) }
 }

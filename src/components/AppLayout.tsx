@@ -58,9 +58,21 @@ export function AppLayout() {
               </button>
             </div>
           )}
+          <Link
+            to="/invoices"
+            state={{ autoUpload: true }}
+            className="btn btn--small btn--primary app-nav__add-invoice"
+          >
+            + Add Invoice
+          </Link>
         </div>
       </nav>
-      <main className={`app-main${location.pathname.startsWith('/alerts') ? ' app-main--full-width' : ''}`}>
+      <main className="app-main">
+        {location.pathname === '/' && (
+          <Link to="/invoices" state={{ autoUpload: true }} className="mobile-add-invoice">
+            + Add Invoice
+          </Link>
+        )}
         <Outlet />
       </main>
     </div>

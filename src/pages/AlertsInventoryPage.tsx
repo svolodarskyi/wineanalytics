@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ActiveStatusDot } from '../components/ActiveStatusDot'
+import { AlertTrendSparkline } from '../components/AlertTrendSparkline'
 import { EntityPicker } from '../components/EntityPicker'
 import { Modal } from '../components/Modal'
 import {
@@ -118,6 +119,7 @@ export function AlertsInventoryPage() {
             <thead>
               <tr>
                 <th>Wine</th>
+                <th>90d Trend</th>
                 <th className="numeric">Current Balance</th>
                 <th className="numeric">Alert Level</th>
               </tr>
@@ -132,6 +134,9 @@ export function AlertsInventoryPage() {
                       </Link>
                       <span className="badge badge--low">Low stock</span>
                     </div>
+                  </td>
+                  <td>
+                    <AlertTrendSparkline wine={alert.wine} />
                   </td>
                   <td className="numeric">{formatBottles(alert.balanceInBottles)}</td>
                   <td className="numeric">{alert.minBottles}</td>
@@ -210,7 +215,6 @@ export function AlertsInventoryPage() {
                       current && current.wine ? { ...current, minBottles: event.target.value } : current,
                     )
                   }
-                  autoFocus
                 />
               </div>
               {existingThreshold && (

@@ -35,6 +35,7 @@ describe('mock invoice service - image uploads via OpenAI', () => {
         additionalCharges: [{ description: 'Sales Tax', amount: 3.5 }],
       }),
       listLogs: vi.fn().mockResolvedValue([]),
+      extractWine: vi.fn(),
     }
     const invoices = createMockInvoiceService(store, { latencyMs: 0, processingDelayMs: 1000 }, fakeOpenAi)
 
@@ -56,6 +57,7 @@ describe('mock invoice service - image uploads via OpenAI', () => {
     const fakeOpenAi: OpenAiService = {
       extractInvoice: vi.fn().mockRejectedValue(new Error('boom')),
       listLogs: vi.fn().mockResolvedValue([]),
+      extractWine: vi.fn(),
     }
     const invoices = createMockInvoiceService(store, { latencyMs: 0, processingDelayMs: 1000 }, fakeOpenAi)
 
@@ -72,6 +74,7 @@ describe('mock invoice service - image uploads via OpenAI', () => {
     const fakeOpenAi: OpenAiService = {
       extractInvoice: vi.fn(),
       listLogs: vi.fn().mockResolvedValue([]),
+      extractWine: vi.fn(),
     }
     const invoices = createMockInvoiceService(store, { latencyMs: 0, processingDelayMs: 5 }, fakeOpenAi)
 

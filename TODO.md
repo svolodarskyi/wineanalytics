@@ -36,3 +36,24 @@ add pagination. especially to sales and purchases page.
 buy same wines from differnt vendor?
 
 wine inventory . swicth to show even inactive. toggle ? or button or check
+
+what we can learn about the buisness about bying wine to makea better app ....
+
+Alerts do not have margin, - too wide
+
+alerts which applied to all bottles or specific type of bottles?
+
+maybe somehow configure hwo much time it takes to deliver etc...
+how much time one bottle is used? is that possible to undeerstand? take 750 ml and count how many days it takes?.... some weighted avergae?
+then it will define when need ot order
+
+then help to predict when need to order
+
+sales graph:
+shpw x axis legent and relagtive marks on y
+
+sales.. maybe show week over ween, month over month, year over year.. hwo to show?
+need to select period?
+
+maybe bring back inventory level overtime?
+wine filters.. check design on all pages. shoudl add .add wine shortcut?

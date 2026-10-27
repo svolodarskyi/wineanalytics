@@ -154,6 +154,62 @@ describe('mock invoice service', () => {
       expect(approvedAgain.approvedAt).toBe(approvedOnce.approvedAt)
     })
 
+    it('lets an excluded line item skip the wine-SKU requirement and stay out of purchased totals', async () => {
+      // No master data to fuzzy-match against, so every line starts (and
+      // stays, unless explicitly resolved) unresolved - deterministic setup
+      // for the "still unmatched" assertion below.
+      services = createMockServices({ latencyMs: 0, processingDelayMs: PROCESSING_DELAY, seed: false })
+      const invoice = await services.invoices.upload(SAMPLE_FILE)
+      const processed = await waitForProcessing(services, invoice.id)
+      expect(processed.lineItems.length).toBeGreaterThan(1)
+
+      const vendor = await services.vendors.create({ name: 'Excluded Line Vendor' })
+      await services.invoices.selectVendorMatch(invoice.id, vendor.id)
+
+      const wine = await services.wines.create({ name: 'Excluded Line Wine' })
+      const [excludedLine, ...matchedLines] = processed.lineItems
+      for (const line of matchedLines) {
+        await services.invoices.selectSkuMatch(invoice.id, line.id, wine.id)
+      }
+
+      // Still unmatched - approval must reject until it's flagged excluded.
+      await expect(services.invoices.approve(invoice.id)).rejects.toThrow(/wine sku/i)
+
+      const excluded = await services.invoices.setLineItemExcluded(invoice.id, excludedLine.id, true)
+      expect(excluded.lineItems.find((l) => l.id === excludedLine.id)?.excluded).toBe(true)
+
+      const approved = await services.invoices.approve(invoice.id)
+      expect(approved.status).toBe('approved')
+
+      const balances = await services.wines.getBalances()
+      const wineBalance = balances.find((b) => b.wine.id === wine.id)
+      expect(wineBalance?.balanceInBottles).toBe(matchedLines.reduce((sum, line) => sum + line.quantity, 0))
+    })
+
+    it('editing an approved invoice reverts its status to not_approved, so it needs approving again', async () => {
+      const invoice = await services.invoices.upload(SAMPLE_FILE)
+      const processed = await waitForProcessing(services, invoice.id)
+      const vendor = await services.vendors.create({ name: 'Revert Test Vendor' })
+      await services.invoices.selectVendorMatch(invoice.id, vendor.id)
+      const wine = await services.wines.create({ name: 'Revert Test Wine' })
+      for (const line of processed.lineItems) {
+        await services.invoices.selectSkuMatch(invoice.id, line.id, wine.id)
+      }
+      const approved = await services.invoices.approve(invoice.id)
+      expect(approved.status).toBe('approved')
+      expect(approved.approvedAt).not.toBeNull()
+
+      const line = approved.lineItems[0]
+      const edited = await services.invoices.updateLineItem(invoice.id, line.id, {
+        volumeMl: line.volumeMlRaw,
+        quantity: line.quantity + 1,
+        unitPrice: line.unitPrice,
+        packSize: line.packSize,
+      })
+      expect(edited.status).toBe('not_approved')
+      expect(edited.approvedAt).toBeNull()
+    })
+
     it('auto-confirms any AI-suggested matches the user never explicitly clicked Confirm on', async () => {
       // The user should only have to touch matches they want to correct;
       // approving accepts every remaining suggestion as-is. Pin the sample
@@ -185,7 +241,7 @@ describe('mock invoice service', () => {
       expect(await services.invoices.list()).not.toContainEqual(expect.objectContaining({ id: invoice.id }))
     })
 
-    it('rejects discarding an approved invoice', async () => {
+    it('removes an approved invoice too - discard is allowed regardless of approval status', async () => {
       const invoice = await services.invoices.upload(SAMPLE_FILE)
       const processed = await waitForProcessing(services, invoice.id)
       const vendor = await services.vendors.create({ name: 'Discard Test Vendor' })
@@ -196,8 +252,8 @@ describe('mock invoice service', () => {
       }
       await services.invoices.approve(invoice.id)
 
-      await expect(services.invoices.discard(invoice.id)).rejects.toThrow(/cannot be discarded/i)
-      expect(await services.invoices.get(invoice.id)).not.toBeNull()
+      await services.invoices.discard(invoice.id)
+      expect(await services.invoices.get(invoice.id)).toBeNull()
     })
 
     it('rejects an unknown invoice id', async () => {

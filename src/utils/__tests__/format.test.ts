@@ -21,4 +21,8 @@ describe('formatDate', () => {
     expect(formatDate(null)).toBe('-')
     expect(formatDate('not-a-date')).toBe('-')
   })
+
+  it('formats a bare "date" column (e.g. invoice_date) as the exact calendar day, regardless of timezone', () => {
+    expect(formatDate('2026-07-12')).toBe('Jul 12, 2026')
+  })
 })

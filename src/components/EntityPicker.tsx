@@ -70,7 +70,6 @@ export function EntityPicker({
         placeholder={searchLabel}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        autoFocus
       />
 
       {!noMatches && (

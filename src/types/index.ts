@@ -4,19 +4,32 @@ export type MatchStatus = 'suggested' | 'confirmed' | 'changed' | 'unresolved'
 
 export type InvoiceStatus = 'processing' | 'not_approved' | 'approved'
 
-export type WineCategory = 'red' | 'white' | 'rose' | 'sparkling' | 'dessert' | 'fortified' | 'other'
+export type WineCategory =
+  | 'red'
+  | 'white'
+  | 'rose'
+  | 'sparkling'
+  | 'dessert'
+  | 'fortified'
+  | 'beer'
+  | 'spirits'
+  | 'cider'
+  | 'non_alcoholic'
+  | 'other'
 
 export interface Wine {
   id: string
   name: string
   /** Name as it typically appears on vendor invoices, if different from the display name. Falls back to `name` for matching when unset. */
   invoiceName: string | null
+  /** Winery/producer, e.g. "Caymus Vineyards" - distinct from the wine's own name. */
+  producer: string | null
   country: string | null
   /** Bottle size in milliliters, e.g. 750, 1500. The standard unit for inventory/volume math - never a formatted string. */
   volumeMl: number | null
   category: WineCategory | null
-  /** Data URL of an uploaded label/bottle photo, if any. */
-  imageDataUrl: string | null
+  /** Data URLs of uploaded label/bottle photos - up to 3. */
+  imageDataUrls: string[]
   active: boolean
   createdAt: string
 }
@@ -50,10 +63,16 @@ export interface InvoiceLineItem {
   volumeMlRaw: number | null
   /** Best-effort category guess from the item name, e.g. "red"/"white" - pre-fills a new wine's `category` field. */
   categoryRaw: WineCategory | null
+  /** How many of what's printed on the invoice line - a pack/case count when packSize > 1, otherwise the same as the unit count. */
   quantity: number
+  /** Price for one `quantity` unit as printed (a pack's price, not a single bottle/can's) - lineTotal is always quantity * unitPrice, matching the invoice. */
   unitPrice: number
   lineTotal: number
+  /** Units per pack/case as printed (a "6-pack" or "case of 24"), default 1 for items sold individually. Actual bottles/cans received is quantity * packSize; per-unit cost is unitPrice / packSize. */
+  packSize: number
   skuMatch: SkuMatch
+  /** Marks a line as never meant to become inventory (a non-wine item, a duplicate, etc.) - excluded from the wine-SKU-match requirement on approval and from purchased-quantity totals. */
+  excluded: boolean
 }
 
 /** A charge on the invoice that isn't a wine/product line item - tax, deposits, GST, shipping, fees, etc. */
@@ -88,6 +107,7 @@ export interface WineBalance {
   balanceInBottles: number
 }
 
+/** Unlike InvoiceLineItem, quantity/unitPrice here are already per-unit (pack size folded in) - quantity is real bottles/cans received, unitPrice is cost per one, so this plugs directly into bottle-balance and per-bottle-value math without callers having to know about packs. lineTotal is unchanged - still the actual dollar amount for the line. */
 export interface PurchaseHistoryEntry {
   invoiceId: string
   date: string | null

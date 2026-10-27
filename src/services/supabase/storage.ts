@@ -2,15 +2,18 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60
 
-function dataUrlToBlob(dataUrl: string): { blob: Blob; ext: string } {
-  const match = dataUrl.match(/^data:([^;]+);base64,(.*)$/)
+/**
+ * Native fetch-based decode instead of atob + a manual byte-by-byte
+ * Uint8Array loop - meaningfully less peak memory for large (multi-MB phone
+ * photo) data URLs, which matters on memory-constrained mobile browsers.
+ */
+async function dataUrlToBlob(dataUrl: string): Promise<{ blob: Blob; ext: string }> {
+  const match = dataUrl.match(/^data:([^;]+);base64,/)
   if (!match) throw new Error('Expected a base64 data URL.')
-  const [, mime, base64] = match
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  const [, mime] = match
+  const blob = await fetch(dataUrl).then((r) => r.blob())
   const ext = mime.split('/')[1]?.split('+')[0] ?? 'bin'
-  return { blob: new Blob([bytes], { type: mime }), ext }
+  return { blob, ext }
 }
 
 /** Uploads a `data:` URL to Storage and returns the object path (never a signed URL - that's resolved per-read, see resolveSignedUrl). */
@@ -20,7 +23,7 @@ export async function uploadDataUrl(
   pathWithoutExt: string,
   dataUrl: string,
 ): Promise<string> {
-  const { blob, ext } = dataUrlToBlob(dataUrl)
+  const { blob, ext } = await dataUrlToBlob(dataUrl)
   const path = `${pathWithoutExt}.${ext}`
   const { error } = await supabase.storage.from(bucket).upload(path, blob, { upsert: true, contentType: blob.type })
   if (error) throw new Error(error.message)

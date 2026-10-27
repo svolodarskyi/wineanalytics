@@ -15,6 +15,17 @@ function requireInvoice(store: MockStore, id: string): Invoice {
   return invoice
 }
 
+/**
+ * Any hand-edit made after approval invalidates that approval - it's
+ * accepted-as-correct data that's now being changed, so it needs a human to
+ * look it over and approve again before it counts. Spread into every
+ * editing method's store.updateInvoice() updater, after `...current` so it
+ * always wins there but nothing else overrides it.
+ */
+function revertApprovalIfEditing(invoice: Invoice): Partial<Invoice> {
+  return invoice.status === 'approved' ? { status: 'not_approved', approvedAt: null } : {}
+}
+
 export function createMockInvoiceService(
   store: MockStore,
   options: MockInvoiceServiceOptions,
@@ -76,6 +87,7 @@ export function createMockInvoiceService(
       }
       return store.updateInvoice(invoiceId, (current) => ({
         ...current,
+        ...revertApprovalIfEditing(current),
         extracted: {
           ...current.extracted,
           vendorMatch: { ...current.extracted.vendorMatch, status: 'confirmed' },
@@ -90,6 +102,7 @@ export function createMockInvoiceService(
       if (!vendor) throw new Error('Vendor not found.')
       return store.updateInvoice(invoiceId, (current) => ({
         ...current,
+        ...revertApprovalIfEditing(current),
         extracted: {
           ...current.extracted,
           vendorMatch: { ...current.extracted.vendorMatch, vendorId: vendor.id, confidence: null, status: 'changed' },
@@ -107,6 +120,7 @@ export function createMockInvoiceService(
       }
       return store.updateInvoice(invoiceId, (current) => ({
         ...current,
+        ...revertApprovalIfEditing(current),
         lineItems: current.lineItems.map((item) =>
           item.id === lineItemId ? { ...item, skuMatch: { ...item.skuMatch, status: 'confirmed' } } : item,
         ),
@@ -122,6 +136,7 @@ export function createMockInvoiceService(
       if (!wine) throw new Error('Wine not found.')
       return store.updateInvoice(invoiceId, (current) => ({
         ...current,
+        ...revertApprovalIfEditing(current),
         lineItems: current.lineItems.map((item) =>
           item.id === lineItemId
             ? { ...item, skuMatch: { wineId: wine.id, confidence: null, status: 'changed' } }
@@ -130,11 +145,52 @@ export function createMockInvoiceService(
       }))
     },
 
+    async updateLineItem(
+      invoiceId: string,
+      lineItemId: string,
+      fields: { volumeMl: number | null; quantity: number; unitPrice: number; packSize: number },
+    ): Promise<Invoice> {
+      await delay(latencyMs)
+      const invoice = requireInvoice(store, invoiceId)
+      const line = invoice.lineItems.find((item) => item.id === lineItemId)
+      if (!line) throw new Error('Invoice line item not found.')
+      const lineTotal = Math.round(fields.quantity * fields.unitPrice * 100) / 100
+      return store.updateInvoice(invoiceId, (current) => ({
+        ...current,
+        ...revertApprovalIfEditing(current),
+        lineItems: current.lineItems.map((item) =>
+          item.id === lineItemId
+            ? {
+                ...item,
+                volumeMlRaw: fields.volumeMl,
+                quantity: fields.quantity,
+                unitPrice: fields.unitPrice,
+                packSize: fields.packSize,
+                lineTotal,
+              }
+            : item,
+        ),
+      }))
+    },
+
+    async setLineItemExcluded(invoiceId: string, lineItemId: string, excluded: boolean): Promise<Invoice> {
+      await delay(latencyMs)
+      const invoice = requireInvoice(store, invoiceId)
+      const line = invoice.lineItems.find((item) => item.id === lineItemId)
+      if (!line) throw new Error('Invoice line item not found.')
+      return store.updateInvoice(invoiceId, (current) => ({
+        ...current,
+        ...revertApprovalIfEditing(current),
+        lineItems: current.lineItems.map((item) => (item.id === lineItemId ? { ...item, excluded } : item)),
+      }))
+    },
+
     async updateInvoiceDate(invoiceId: string, invoiceDate: string | null): Promise<Invoice> {
       await delay(latencyMs)
       requireInvoice(store, invoiceId)
       return store.updateInvoice(invoiceId, (current) => ({
         ...current,
+        ...revertApprovalIfEditing(current),
         extracted: { ...current.extracted, invoiceDate },
       }))
     },
@@ -149,7 +205,7 @@ export function createMockInvoiceService(
       if (!invoice.extracted.vendorMatch.vendorId) {
         throw new Error('Resolve the vendor match before approving.')
       }
-      const unresolvedLine = invoice.lineItems.find((line) => !line.skuMatch.wineId)
+      const unresolvedLine = invoice.lineItems.find((line) => !line.excluded && !line.skuMatch.wineId)
       if (unresolvedLine) {
         throw new Error("Resolve every line item's wine SKU before approving.")
       }
@@ -174,10 +230,7 @@ export function createMockInvoiceService(
 
     async discard(invoiceId: string): Promise<void> {
       await delay(latencyMs)
-      const invoice = requireInvoice(store, invoiceId)
-      if (invoice.status === 'approved') {
-        throw new Error('Approved invoices cannot be discarded.')
-      }
+      requireInvoice(store, invoiceId)
       store.deleteInvoice(invoiceId)
     },
   }

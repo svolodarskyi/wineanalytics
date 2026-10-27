@@ -95,6 +95,32 @@ describe('InvoiceReviewPage', () => {
     expect(stored?.status).toBe('approved')
   })
 
+  it('allows a negative quantity (a vendor return/credit) and recomputes a negative line total', async () => {
+    const user = userEvent.setup()
+    resetTestServices({ seed: false })
+    const invoice = await uploadAndWaitForProcessing()
+
+    renderWithProviders(<InvoiceReviewPage />, {
+      route: `/invoices/${invoice.id}`,
+      path: '/invoices/:invoiceId',
+    })
+
+    await screen.findByText('Wine line items')
+    const row = screen.getAllByRole('row').find((r) => within(r).queryByText(/select wine/i))!
+    const qtyInput = within(row).getByLabelText('Qty')
+    await user.clear(qtyInput)
+    await user.type(qtyInput, '-1')
+
+    await user.click(within(row).getByRole('button', { name: /^save$/i }))
+
+    await waitFor(async () => {
+      const updated = await testServicesState.current.invoices.get(invoice.id)
+      const editedLine = updated!.lineItems.find((line) => line.quantity === -1)
+      expect(editedLine).toBeDefined()
+      expect(editedLine!.lineTotal).toBeCloseTo(-1 * editedLine!.unitPrice, 2)
+    })
+  })
+
   it('lets the user create a brand-new vendor and wine directly from the picker when nothing matches', async () => {
     const user = userEvent.setup()
     resetTestServices({ seed: false })
@@ -156,13 +182,18 @@ describe('InvoiceReviewPage', () => {
     await user.click(within(row).getByRole('button', { name: /select wine/i }))
     await user.click(within(row).getByRole('button', { name: /add ".*" as a new wine/i }))
 
-    const createButton = within(row).getByRole('button', { name: /create wine/i })
-    expect(within(row).getByLabelText(/volume/i)).toHaveValue(750)
-    expect(within(row).getByLabelText(/category/i)).toHaveValue('red')
+    // Scoped to the "new wine" dialog, not the whole row - the row also now
+    // carries its own always-present "Volume (ml)" field for correcting this
+    // line item directly (see LineItemEditForm), so `within(row)` alone would
+    // match both.
+    const dialog = within(row).getByRole('dialog')
+    const createButton = within(dialog).getByRole('button', { name: /create wine/i })
+    expect(within(dialog).getByLabelText(/volume/i)).toHaveValue(750)
+    expect(within(dialog).getByLabelText(/category/i)).toHaveValue('red')
     expect(createButton).toBeDisabled()
 
     // Editing the prefilled volume re-requires approval rather than silently accepting the edit.
-    const volumeInput = within(row).getByLabelText(/volume/i)
+    const volumeInput = within(dialog).getByLabelText(/volume/i)
     await user.clear(volumeInput)
     await user.type(volumeInput, '750')
     expect(createButton).toBeDisabled()

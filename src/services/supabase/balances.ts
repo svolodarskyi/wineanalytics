@@ -3,14 +3,17 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 async function fetchPurchasedByWineId(supabase: SupabaseClient): Promise<Map<string, number>> {
   const { data, error } = await supabase
     .from('wine_invoice_line_items')
-    .select('wine_id, quantity, wine_invoices!inner(status)')
+    .select('wine_id, quantity, pack_size, wine_invoices!inner(status)')
     .eq('wine_invoices.status', 'approved')
+    .eq('excluded', false)
   if (error) throw new Error(error.message)
 
   const map = new Map<string, number>()
-  for (const line of (data ?? []) as { wine_id: string | null; quantity: number }[]) {
+  for (const line of (data ?? []) as { wine_id: string | null; quantity: number; pack_size: number }[]) {
     if (!line.wine_id) continue
-    map.set(line.wine_id, (map.get(line.wine_id) ?? 0) + Number(line.quantity))
+    // A line's quantity is pack count as printed - real units received is quantity * pack_size (1 for items sold individually).
+    const units = Number(line.quantity) * Number(line.pack_size)
+    map.set(line.wine_id, (map.get(line.wine_id) ?? 0) + units)
   }
   return map
 }

@@ -17,7 +17,7 @@
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
 
-  font: 15px/1.5 var(--sans);
+  font: 17px/1.5 var(--sans);
   color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
@@ -71,13 +71,13 @@ h3 {
 }
 
 h1 {
-  font-size: 22px;
+  font-size: 25px;
 }
 h2 {
-  font-size: 18px;
+  font-size: 20px;
 }
 h3 {
-  font-size: 15px;
+  font-size: 17px;
 }
 
 p {
@@ -139,7 +139,7 @@ table {
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text-h);
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
 }
 
@@ -166,7 +166,7 @@ table {
   border-radius: 6px;
   color: var(--text-muted);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .app-nav__link:hover {
@@ -179,25 +179,68 @@ table {
 }
 
 .app-nav__user {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
+/* Tablet/desktop-only shortcut to the invoice upload flow, pinned to the
+   nav bar - the equivalent mobile entry point is .mobile-add-invoice,
+   since a busy owner shouldn't have to open the hamburger menu to log a
+   delivery that just arrived. */
+.app-nav__add-invoice {
+  margin-left: auto;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* Mobile-only shortcut to the invoice upload flow, sitting in the normal
+   page flow above the dashboard tiles on the home page rather than floating
+   fixed over content - a muted outline instead of a solid accent fill so it
+   reads as a shortcut, not an alert. Home page only; every other page keeps
+   the hamburger menu's entry point instead. */
+.mobile-add-invoice {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  /* Ancestor-qualified for specificity over .btn's own `display: inline-flex`
+     (same class count as a bare .app-nav__add-invoice rule, so a plain rule
+     here would lose that tie-break by source order - see the .modal--large
+     fix above for the same pattern). */
+  .app-nav__panel .app-nav__add-invoice {
+    display: none;
+  }
+
+  .mobile-add-invoice {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-h);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 16px;
+  }
+
+  .mobile-add-invoice:active {
+    background: var(--bg-subtle);
+  }
+}
+
 .app-main {
   flex: 1;
   width: 100%;
-  max-width: 1040px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 24px;
-}
-
-/* Alerts tables have more columns than most pages and benefit from the
-   full viewport width instead of the shared 1040px content cap. */
-.app-main--full-width {
-  max-width: 100%;
 }
 
 @media (max-width: 640px) {
@@ -253,8 +296,21 @@ table {
 
 .page-header__meta {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 15px;
   margin-top: 4px;
+}
+
+.page-header__title-group {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* Single-line ellipsis for content that can't be predicted in length (e.g. an uploaded file name) - relies on a flex ancestor with min-width: 0 to actually shrink instead of overflowing. */
+.truncate-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 /* --- Cards / surfaces --- */
@@ -293,7 +349,7 @@ table {
   background: var(--accent-bg);
   border-radius: 8px;
   padding: 10px 14px;
-  font-size: 14px;
+  font-size: 16px;
   margin-bottom: 16px;
 }
 
@@ -301,6 +357,139 @@ table {
   border-color: var(--danger);
   background: var(--danger-bg);
   color: var(--danger);
+}
+
+/* --- Detail graphs (period toggle, chart card header) --- */
+
+.detail-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.period-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.period-toggle__btn {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.period-toggle__btn:hover {
+  color: var(--text-h);
+}
+
+.period-toggle__btn.active {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.chart-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.chart-legend__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* --- Stat tiles (dashboard row) --- */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 14px 16px;
+  text-decoration: none;
+  color: inherit;
+}
+
+a.stat-tile:hover {
+  border-color: var(--accent-border);
+}
+
+.stat-tile__label {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.stat-tile__value {
+  font-size: 27px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.stat-tile__detail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-muted);
+  min-height: 20px;
+}
+
+.stat-tile--danger .stat-tile__value {
+  color: var(--danger);
+}
+.stat-tile--warning .stat-tile__value {
+  color: var(--warning);
+}
+.stat-tile--success .stat-tile__value {
+  color: var(--success);
+}
+
+.sparkline {
+  display: block;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .stat-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Always exactly 2 columns, e.g. Wine Detail's Ending Bottles/Approx Value pair - overrides the 4-up breakpoint above via extra specificity. */
+.stat-grid.stat-grid--fixed-2 {
+  grid-template-columns: repeat(2, 1fr);
+  margin-bottom: 16px;
 }
 
 /* --- Table --- */
@@ -319,14 +508,14 @@ table {
   text-align: left;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
-  font-size: 14px;
+  font-size: 16px;
 }
 
 @media (max-width: 480px) {
   .data-table--compact th,
   .data-table--compact td {
     padding: 10px 6px;
-    font-size: 13px;
+    font-size: 15px;
   }
 
   /* Wraps a long vendor/wine name onto a second line instead of truncating
@@ -342,7 +531,7 @@ table {
 .data-table th {
   color: var(--text-muted);
   font-weight: 500;
-  font-size: 12px;
+  font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -358,6 +547,113 @@ table {
 .data-table td.numeric,
 .data-table th.numeric {
   text-align: right;
+}
+
+/* Truncates a long value (e.g. vendor name) with an ellipsis instead of forcing the table wider than its column budget - full text is on `title`. */
+.cell-truncate {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .cell-truncate {
+    max-width: 88px;
+  }
+}
+
+.data-table td.numeric--low {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.checkbox-field {
+  cursor: pointer;
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+.line-items-table__row--excluded {
+  opacity: 0.6;
+}
+
+/*
+ * Wine line items table: on a phone, 3 columns (item/pricing form/SKU match)
+ * still cramp the pricing form's labels. Below 640px it becomes a stack of
+ * cards instead, one per line item - item name as the card title, the
+ * pricing form and SKU match each full-width below it. Column order is
+ * fixed (see InvoiceReviewPage's LineItemRow), so cells are targeted by
+ * position rather than a class per column.
+ */
+@media (max-width: 640px) {
+  .line-items-table {
+    min-width: 0;
+  }
+
+  .line-items-table thead {
+    display: none;
+  }
+
+  .line-items-table,
+  .line-items-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .line-items-table tr {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .line-items-table td {
+    display: block;
+    border-bottom: none;
+    padding: 0;
+    text-align: left;
+  }
+
+  .line-items-table td:nth-child(1) {
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+
+  .line-items-table td:nth-child(3) {
+    margin-top: 12px;
+  }
+
+  .line-item-edit {
+    max-width: none;
+  }
+
+  .line-item-edit__field .number-stepper {
+    max-width: none;
+  }
+}
+
+.sortable-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sortable-header:hover {
+  color: var(--accent);
+}
+
+.sortable-header__arrow {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .data-table .row-link {
@@ -390,9 +686,22 @@ table {
   display: inline-block;
 }
 
+.entity-thumb-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.entity-thumb-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
 .empty-state {
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 16px;
   padding: 24px 0;
   text-align: center;
 }
@@ -405,7 +714,7 @@ table {
   gap: 4px;
   padding: 2px 8px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -454,7 +763,7 @@ table {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1;
 }
@@ -480,7 +789,7 @@ table {
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text-h);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   cursor: pointer;
   line-height: 1.3;
@@ -509,7 +818,7 @@ table {
 .btn--small {
   min-height: 34px;
   padding: 4px 10px;
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .btn--danger {
@@ -517,6 +826,14 @@ table {
 }
 
 /* --- Forms --- */
+
+.scan-bottle-cta {
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
 
 .field {
   display: flex;
@@ -526,7 +843,7 @@ table {
 }
 
 .field label {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
   color: var(--text-muted);
 }
@@ -566,6 +883,125 @@ table {
   min-width: 240px;
 }
 
+/* Inline-editable numeric input (invoice line item volume/qty/price), used inside .line-item-edit. */
+.table-input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font: inherit;
+  color: inherit;
+  text-align: right;
+}
+
+.table-input:focus {
+  outline: 2px solid var(--accent-border);
+  outline-offset: -1px;
+}
+
+.table-input:disabled {
+  opacity: 0.6;
+}
+
+/*
+ * Per-line-item edit form (volume/qty/unit price + computed total + an
+ * explicit Save button) - a compact label-left, input-right mini form so a
+ * multi-field correction is one deliberate save instead of several
+ * autosave-on-blur writes. Same markup at every width; only the surrounding
+ * table (see .line-items-table below) changes between a table cell and a
+ * stacked card.
+ */
+.line-item-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 240px;
+}
+
+.line-item-edit__field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.line-item-edit__field label {
+  flex: 0 0 84px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.line-item-edit__field .number-stepper {
+  flex: 1;
+  max-width: 132px;
+}
+
+/*
+ * Native <input type="number"> spinner arrows are inconsistent across
+ * browsers and mobile browsers hide them entirely - these +/- buttons work
+ * the same everywhere, which matters since qty/price/volume are the fields
+ * most often nudged by one step to fix an OCR misread.
+ */
+.number-stepper {
+  display: flex;
+  align-items: stretch;
+}
+
+.number-stepper__btn {
+  flex: 0 0 30px;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-h);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.number-stepper__btn:first-child {
+  border-radius: 6px 0 0 6px;
+  border-right: none;
+}
+
+.number-stepper__btn:last-child {
+  border-radius: 0 6px 6px 0;
+  border-left: none;
+}
+
+.number-stepper__btn:disabled {
+  opacity: 0.5;
+}
+
+.number-stepper .table-input {
+  flex: 1;
+  min-width: 0;
+  border-radius: 0;
+  text-align: center;
+  /* The +/- buttons are the one stepper - without this, desktop browsers
+     additionally draw their own native up/down spinner inside the input,
+     giving two separate sets of controls for the same value. */
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.number-stepper .table-input::-webkit-outer-spin-button,
+.number-stepper .table-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.line-item-edit__total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 6px;
+  margin-top: 2px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.line-item-edit__total span {
+  color: var(--text-muted);
+}
+
 /* --- Tabs --- */
 
 .tabs {
@@ -585,7 +1021,7 @@ table {
   border-left: none;
   border-right: none;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
   text-decoration: none;
 }
 
@@ -606,7 +1042,7 @@ table {
   border-radius: 999px;
   background: var(--warning);
   color: #fff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
 }
@@ -633,7 +1069,7 @@ table {
 }
 
 .match-row__raw {
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text-muted);
 }
 
@@ -671,7 +1107,7 @@ table {
   background: none;
   border-radius: 5px;
   color: var(--text-h);
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
 }
 
@@ -680,8 +1116,8 @@ table {
 }
 
 .invoice-doc-preview {
+  width: 100%;
   max-width: 100%;
-  max-height: 480px;
   border: 1px solid var(--border);
   border-radius: 8px;
   display: block;
@@ -689,55 +1125,69 @@ table {
 
 .invoice-doc-preview-wrap {
   position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* 33.75vh = 90% of the previous 37.5vh (which itself was 75% of the old
+     click-to-zoom size, 50vh) - no separate shallow/zoomed states or click
+     interaction anymore. Full width (never wider - no horizontal scroll),
+     scroll vertically for the rest of a tall image. */
+  max-height: 33.75vh;
 }
 
-.invoice-doc-preview-overlay {
+.invoice-doc-expand-btn {
   position: absolute;
-  inset: 0;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: transparent;
-  cursor: zoom-in;
-  transition: background 0.15s, color 0.15s;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.invoice-doc-preview-overlay:hover,
-.invoice-doc-preview-overlay:focus-visible {
-  background: rgba(0, 0, 0, 0.35);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
   color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s;
 }
 
-.modal--large {
-  max-width: 960px;
+.invoice-doc-expand-btn:hover,
+.invoice-doc-expand-btn:focus-visible {
+  background: rgba(0, 0, 0, 0.75);
 }
 
-.doc-zoom {
-  overflow: auto;
+/*
+ * touch-action: none is what actually fixes pinch-to-zoom zooming the whole
+ * page instead of just this image - it tells the browser this element
+ * handles its own touch gestures, so its native pinch-zoom-the-viewport
+ * behavior never fires here (see ZoomableImage.tsx for the pinch/wheel/
+ * double-click handling that replaces it).
+ */
+.zoomable-image {
+  touch-action: none;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   max-height: 80svh;
-  text-align: center;
-  background: var(--bg-subtle);
-  border-radius: 8px;
 }
 
-.doc-zoom__img {
+.zoomable-image img {
+  user-select: none;
+}
+
+.invoice-doc-modal-img {
   max-width: 100%;
   max-height: 80svh;
-  cursor: zoom-in;
-  display: inline-block;
+  display: block;
+  margin: 0 auto;
+  border-radius: 8px;
 }
 
-.doc-zoom__img--zoomed {
-  max-width: none;
-  max-height: none;
-  cursor: zoom-out;
-}
-
-.doc-modal-frame {
-  /* Sized to a standard letter/A4 page ratio instead of stretching to a fixed
-     viewport-height rectangle, so it reads as a document, not a phone screen. */
+.invoice-doc-modal-frame {
   width: min(100%, calc(80svh * 8.5 / 11));
   aspect-ratio: 8.5 / 11;
   max-height: 80svh;
@@ -745,6 +1195,11 @@ table {
   margin: 0 auto;
   border: none;
   border-radius: 8px;
+}
+
+/* Compound selector (not just .modal--large) so this always wins over the plain .modal rule regardless of source order. */
+.modal.modal--large {
+  max-width: 960px;
 }
 
 .openai-log-thumb {
@@ -756,6 +1211,10 @@ table {
   display: block;
 }
 
+.openai-log-thumb--empty {
+  background: var(--bg-subtle);
+}
+
 .json-view {
   max-height: 60svh;
   overflow: auto;
@@ -764,7 +1223,7 @@ table {
   border-radius: 8px;
   padding: 12px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: 14px;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -791,6 +1250,62 @@ table {
   }
 }
 
+/* Discard/Approve, pinned below the nav bar and above the pinned image (see
+   .review-layout__image's top, which stacks below this bar's height) - so
+   they're reachable without scrolling back up after editing an approved
+   invoice reverts it to not_approved and it needs approving again. */
+.invoice-actions-bar {
+  position: sticky;
+  top: 59px;
+  z-index: 6;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--bg);
+  padding: 10px 0;
+  margin-bottom: 10px;
+}
+
+/*
+ * Invoice review layout: a compact strip of the source document up top
+ * (order:1 - see review-layout__image, and .invoice-doc-preview-wrap's
+ * fixed height/scroll), everything you act on below it in one full-width
+ * column. The image card stays pinned (position: sticky) below the nav bar
+ * and the actions bar while the rest scrolls underneath it, so it's still
+ * visible while reading down through the line items instead of scrolling
+ * away after the first screenful.
+ */
+.review-layout {
+  display: flex;
+  flex-direction: column;
+  /* No gap here - spacing after the sticky image is done as padding-bottom
+     on .review-layout__image instead (below), painted in the same opaque
+     background, so scrolling content can't peek through a transparent gap
+     right under the pinned image. */
+  gap: 0;
+}
+
+.review-layout__content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  order: 2;
+}
+
+.review-layout__image {
+  position: sticky;
+  /* Stacks below .app-nav (59px - see .invoice-actions-bar) plus the actions
+     bar's own height (10px+10px padding + 40px .btn content = 60px) - no gap
+     between the two pinned bars above it and the image. */
+  top: 119px;
+  z-index: 5;
+  background: var(--bg);
+  padding-bottom: 20px;
+  min-width: 0;
+  order: 1;
+}
+
 .login-shell {
   flex: 1;
   display: flex;
@@ -814,6 +1329,8 @@ table {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -844,7 +1361,7 @@ table {
   border: none;
   background: none;
   color: var(--text-muted);
-  font-size: 16px;
+  font-size: 18px;
   cursor: pointer;
   padding: 4px;
   line-height: 1;
@@ -852,5 +1369,5 @@ table {
 
 .spinner-text {
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 16px;
 }
