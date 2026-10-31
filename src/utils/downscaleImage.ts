@@ -5,7 +5,17 @@
 const MAX_DIMENSION = 2500 // roughly what vision models read at "high-res" anyway - no OCR-relevant detail lost
 const JPEG_QUALITY = 0.85
 
-/** Resizes an image file if it's larger than MAX_DIMENSION on its long edge. Returns the original file unchanged (including non-image files) if resizing isn't needed or fails. */
+/**
+ * Resizes an image file if it's larger than MAX_DIMENSION on its long edge,
+ * and always re-encodes through createImageBitmap/canvas even when no
+ * resize is needed. That round-trip bakes the image's EXIF orientation
+ * (the "this should display rotated 90°" tag phone cameras write instead of
+ * physically rotating pixels) into the actual pixel data and drops the EXIF
+ * tag entirely - without it, a photo that previews upright in an <img> can
+ * still reach OCR sideways, since not every consumer of the file honors
+ * that tag the same way. Returns the original file unchanged (including
+ * non-image files) if decoding fails.
+ */
 export async function downscaleImageFile(file: File): Promise<File> {
   if (!file.type.startsWith('image/')) return file
 
@@ -13,8 +23,6 @@ export async function downscaleImageFile(file: File): Promise<File> {
     const bitmap = await createImageBitmap(file)
     try {
       const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height))
-      if (scale >= 1) return file
-
       const targetWidth = Math.round(bitmap.width * scale)
       const targetHeight = Math.round(bitmap.height * scale)
       const canvas = document.createElement('canvas')

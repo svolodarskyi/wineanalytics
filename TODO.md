@@ -1,3 +1,6 @@
+--match... do we want to do fussy serach?
+--need test env
+
 - do we rename from wine analytics to somelier analytics... and win to -what?
 - update properties - see excalidraw notes
 - when taking the picture see if we can rotate picture.
