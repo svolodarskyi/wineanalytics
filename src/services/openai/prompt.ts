@@ -15,6 +15,8 @@ Read the image carefully and return a single JSON object with exactly this shape
       "itemName": string,        // the product name as printed, do not normalize or translate it - do NOT include the bottle/can size or pack size here, those go in "volumeMl" and "packSize"
       "volumeMl": number | null, // bottle/can size in milliliters - convert whatever unit is printed (750ml -> 750, 1.5L -> 1500, 375ml -> 375, a 25.4oz bottle -> 750, a 12oz can -> 355) - null if not shown
       "category": "wine" | "hard_liquor" | "beer" | "sake" | "other" | null,
+      "style": "red" | "white" | "sparkling" | "other" | null,   // ONLY when category is "wine" - null for every other category
+      "country": "france" | "italy" | "usa" | "spain" | "germany" | "argentina" | "chile" | "australia" | "new_zealand" | "portugal" | "south_africa" | "japan" | "other" | null,   // ONLY when category is "wine" - null for every other category
       "quantity": number,        // how many of what's printed on this line - a pack/case count if the line is sold as packs (see packSize), not the total number of individual bottles/cans
       "unitPrice": number,       // price for one "quantity" unit as printed - a pack's price if this line is a pack, not a single bottle/can's price
       "lineTotal": number,
@@ -38,6 +40,10 @@ Rules:
   Blanc", "Champagne"/"Prosecco"/"Brut", and "Port"/"Sherry" are all wine, "IPA"/"Lager"/"Ale" is beer,
   "Vodka"/"Whiskey"/"Tequila" is hard_liquor, "Sake"/"Junmai"/"Nigori" is sake). Use null only if you
   genuinely cannot tell - do not guess "other" as a default.
+- Only when "category" is "wine", also infer "style" (red/white/sparkling, or "other" for rosé/dessert/
+  fortified/anything else) and "country" (country of origin, e.g. "Product of Italy" or implied by the
+  grape/appellation/producer - not the language on the label). Leave both null if category isn't "wine",
+  or if you genuinely cannot tell even though it is wine - do not guess.
 - lineItems is for every beverage product being purchased, not just wine - beer, hard liquor, sake, and
   other drinks all belong here too. Put every other charge or adjustment on the invoice - tax,
   GST/VAT, bottle/case deposits, shipping, fuel surcharges, fees, discounts, credits - into

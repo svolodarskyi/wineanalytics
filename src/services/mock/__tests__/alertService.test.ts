@@ -25,6 +25,8 @@ function pushApprovedInvoice(store: MockStore, wineId: string, quantity: number)
         itemNameRaw: 'Test Wine',
         volumeMlRaw: null,
         categoryRaw: null,
+        styleRaw: null,
+        countryRaw: null,
         quantity,
         unitPrice: 10,
         lineTotal: quantity * 10,

@@ -97,6 +97,8 @@ describe('computeInventoryValue', () => {
           itemNameRaw: 'Corona 6-pack',
           volumeMlRaw: 355,
           categoryRaw: 'beer',
+          styleRaw: null,
+          countryRaw: null,
           quantity: overrides.quantity,
           unitPrice: overrides.unitPrice,
           lineTotal: overrides.quantity * overrides.unitPrice,

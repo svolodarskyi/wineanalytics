@@ -198,19 +198,22 @@ describe('InvoiceReviewPage', () => {
     await user.type(volumeInput, '750')
     expect(createButton).toBeDisabled()
 
+    // Volume, category, style, and country all carry a raw OCR value here, so all four need approval.
     const approveButtons = within(row).getAllByRole('button', { name: /^approve$/i })
-    expect(approveButtons).toHaveLength(2) // one for volume, one for category
+    expect(approveButtons).toHaveLength(4)
 
-    await user.click(approveButtons[0])
-    expect(createButton).toBeDisabled() // category still unapproved
-    await user.click(within(row).getByRole('button', { name: /^approve$/i })) // only the category one remains
+    for (let i = 0; i < 3; i++) {
+      await user.click(within(row).getAllByRole('button', { name: /^approve$/i })[0])
+      expect(createButton).toBeDisabled()
+    }
+    await user.click(within(row).getByRole('button', { name: /^approve$/i })) // last one remaining
     expect(createButton).toBeEnabled()
 
     await user.click(createButton)
     await waitFor(() => expect(within(row).getByText('Resolved')).toBeInTheDocument())
 
     const created = (await testServicesState.current.wines.list()).find((w) => w.name === 'Caymus Cabernet Sauvignon')
-    expect(created).toMatchObject({ volumeMl: 750, category: 'wine' })
+    expect(created).toMatchObject({ volumeMl: 750, category: 'wine', style: 'red', country: 'usa' })
   })
 
   it('lets category be cleared instead of approved, with no gate once it is empty', async () => {

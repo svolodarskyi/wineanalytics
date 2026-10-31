@@ -1,13 +1,33 @@
-import type { AdditionalCharge, OpenAiUsage, WineCategory } from '../../types'
+import type { AdditionalCharge, OpenAiUsage, WineCategory, WineCountry, WineStyle } from '../../types'
 import { estimateCostUsd, INVOICE_OCR_MODEL, WINE_SCAN_MODEL } from './pricing'
 import { INVOICE_EXTRACTION_PROMPT, WINE_SCAN_PROMPT } from './prompt'
 
 const WINE_CATEGORIES: readonly WineCategory[] = ['wine', 'hard_liquor', 'beer', 'sake', 'other']
+const WINE_STYLES: readonly WineStyle[] = ['red', 'white', 'sparkling', 'other']
+const WINE_COUNTRIES: readonly WineCountry[] = [
+  'france',
+  'italy',
+  'usa',
+  'spain',
+  'germany',
+  'argentina',
+  'chile',
+  'australia',
+  'new_zealand',
+  'portugal',
+  'south_africa',
+  'japan',
+  'other',
+]
 
 export interface OpenAiExtractedLineItem {
   itemName: string
   volumeMl: number | null
   category: WineCategory | null
+  /** Only meaningful when category is 'wine'. */
+  style: WineStyle | null
+  /** Only meaningful when category is 'wine'. */
+  country: WineCountry | null
   quantity: number
   unitPrice: number
   lineTotal: number
@@ -55,6 +75,14 @@ function toCategoryOrNull(value: unknown): WineCategory | null {
   return WINE_CATEGORIES.includes(value as WineCategory) ? (value as WineCategory) : null
 }
 
+function toStyleOrNull(value: unknown): WineStyle | null {
+  return WINE_STYLES.includes(value as WineStyle) ? (value as WineStyle) : null
+}
+
+function toCountryOrNull(value: unknown): WineCountry | null {
+  return WINE_COUNTRIES.includes(value as WineCountry) ? (value as WineCountry) : null
+}
+
 /** Units per pack (a "6-pack", "case of 24") - 1 (sold individually) for anything unparseable or less than 1. */
 function toPackSize(value: unknown): number {
   const num = typeof value === 'number' ? value : Number(value)
@@ -72,10 +100,14 @@ function coerceExtractedInvoice(value: unknown): OpenAiExtractedInvoice {
     totalAmount: toNumber(obj.totalAmount),
     lineItems: rawLineItems.map((item) => {
       const line = (item ?? {}) as Record<string, unknown>
+      const category = toCategoryOrNull(line.category)
       return {
         itemName: typeof line.itemName === 'string' ? line.itemName : 'Unknown item',
         volumeMl: toPositiveIntOrNull(line.volumeMl),
-        category: toCategoryOrNull(line.category),
+        category,
+        // Style/country only make sense for wine - ignore the model's guess otherwise.
+        style: category === 'wine' ? toStyleOrNull(line.style) : null,
+        country: category === 'wine' ? toCountryOrNull(line.country) : null,
         quantity: toNumber(line.quantity),
         unitPrice: toNumber(line.unitPrice),
         lineTotal: toNumber(line.lineTotal),

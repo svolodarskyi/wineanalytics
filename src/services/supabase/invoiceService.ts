@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Confidence, Invoice, InvoiceStatus, MatchStatus, WineCategory } from '../../types'
+import type { Confidence, Invoice, InvoiceStatus, MatchStatus, WineCategory, WineCountry, WineStyle } from '../../types'
 import type { InvoiceService } from '../types'
 import { removeObject, resolveSignedUrl, uploadDataUrl } from './storage'
 
@@ -29,6 +29,8 @@ interface LineItemRow {
   item_name_raw: string
   volume_ml_raw: number | null
   category_raw: WineCategory | null
+  style_raw: WineStyle | null
+  country_raw: WineCountry | null
   quantity: number
   unit_price: number
   line_total: number
@@ -92,6 +94,8 @@ async function toInvoice(supabase: SupabaseClient, row: InvoiceRow): Promise<Inv
       itemNameRaw: li.item_name_raw,
       volumeMlRaw: li.volume_ml_raw,
       categoryRaw: li.category_raw,
+      styleRaw: li.style_raw,
+      countryRaw: li.country_raw,
       quantity: Number(li.quantity),
       unitPrice: Number(li.unit_price),
       lineTotal: Number(li.line_total),

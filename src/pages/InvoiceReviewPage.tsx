@@ -19,9 +19,9 @@ import {
 } from '../hooks/useInvoices'
 import { useCreateVendor, useVendors } from '../hooks/useVendors'
 import { useCreateWine, useWines } from '../hooks/useWines'
-import type { InvoiceLineItem, WineCategory } from '../types'
+import type { InvoiceLineItem, WineCategory, WineCountry, WineStyle } from '../types'
 import { formatCurrency, formatDate } from '../utils/format'
-import { WINE_CATEGORY_OPTIONS } from '../utils/wineFormOptions'
+import { WINE_CATEGORY_OPTIONS, WINE_COUNTRY_OPTIONS, WINE_STYLE_OPTIONS } from '../utils/wineFormOptions'
 
 type ActivePicker = 'vendor' | { lineItemId: string } | null
 
@@ -651,8 +651,10 @@ function LineItemEditForm({
  * wine SKU that doesn't exist yet. Volume and category are often
  * OCR-extracted straight from the invoice, so a prefilled value must be
  * explicitly approved (or cleared) before the wine can be created rather
- * than silently accepted - OCR can misread either one. Anything left
- * blank shows up under Alerts > Data Quality.
+ * than silently accepted - OCR can misread either one. Style and country
+ * follow the same pattern but only show up once category is "wine" - they're
+ * meaningless for beer/hard liquor/sake/other. Anything left blank shows up
+ * under Alerts > Data Quality.
  */
 function NewWineReviewFields({
   name,
@@ -670,12 +672,18 @@ function NewWineReviewFields({
   const [volumeApproved, setVolumeApproved] = useState(line.volumeMlRaw == null)
   const [category, setCategory] = useState<WineCategory | ''>(line.categoryRaw ?? '')
   const [categoryApproved, setCategoryApproved] = useState(line.categoryRaw == null)
+  const [style, setStyle] = useState<WineStyle | ''>(line.styleRaw ?? '')
+  const [styleApproved, setStyleApproved] = useState(line.styleRaw == null)
+  const [country, setCountry] = useState<WineCountry | ''>(line.countryRaw ?? '')
+  const [countryApproved, setCountryApproved] = useState(line.countryRaw == null)
   const [error, setError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
 
   const volumeNeedsApproval = volumeInput.trim() !== '' && !volumeApproved
   const categoryNeedsApproval = category !== '' && !categoryApproved
-  const needsApproval = volumeNeedsApproval || categoryNeedsApproval
+  const styleNeedsApproval = category === 'wine' && style !== '' && !styleApproved
+  const countryNeedsApproval = category === 'wine' && country !== '' && !countryApproved
+  const needsApproval = volumeNeedsApproval || categoryNeedsApproval || styleNeedsApproval || countryNeedsApproval
 
   async function handleCreate() {
     setError(null)
@@ -686,6 +694,8 @@ function NewWineReviewFields({
         invoiceName: name,
         volumeMl: volumeInput.trim() ? Number(volumeInput) : null,
         category: category || null,
+        style: category === 'wine' ? style || null : null,
+        country: category === 'wine' ? country || null : null,
       })
       onCreated(wine.id)
     } catch (err) {
@@ -751,6 +761,66 @@ function NewWineReviewFields({
         </div>
         {line.categoryRaw != null && <p className="match-row__raw">Extracted from invoice - review before saving.</p>}
       </div>
+
+      {category === 'wine' && (
+        <div className="field">
+          <label htmlFor="new-wine-style">Style</label>
+          <div className="picker">
+            <select
+              id="new-wine-style"
+              value={style}
+              onChange={(event) => {
+                setStyle(event.target.value as WineStyle | '')
+                setStyleApproved(false)
+              }}
+            >
+              <option value="">Not set - fill out later</option>
+              {WINE_STYLE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {styleNeedsApproval && (
+              <button type="button" className="btn btn--small btn--primary" onClick={() => setStyleApproved(true)}>
+                Approve
+              </button>
+            )}
+            {style !== '' && styleApproved && <span className="badge badge--confirmed">Approved</span>}
+          </div>
+          {line.styleRaw != null && <p className="match-row__raw">Extracted from invoice - review before saving.</p>}
+        </div>
+      )}
+
+      {category === 'wine' && (
+        <div className="field">
+          <label htmlFor="new-wine-country">Country</label>
+          <div className="picker">
+            <select
+              id="new-wine-country"
+              value={country}
+              onChange={(event) => {
+                setCountry(event.target.value as WineCountry | '')
+                setCountryApproved(false)
+              }}
+            >
+              <option value="">Not set - fill out later</option>
+              {WINE_COUNTRY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {countryNeedsApproval && (
+              <button type="button" className="btn btn--small btn--primary" onClick={() => setCountryApproved(true)}>
+                Approve
+              </button>
+            )}
+            {country !== '' && countryApproved && <span className="badge badge--confirmed">Approved</span>}
+          </div>
+          {line.countryRaw != null && <p className="match-row__raw">Extracted from invoice - review before saving.</p>}
+        </div>
+      )}
 
       <p className="page-header__meta">Missing fields show up under Alerts &gt; Data Quality.</p>
 

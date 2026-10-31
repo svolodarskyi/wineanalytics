@@ -123,6 +123,8 @@ async function completeProcessingFromExtraction(
             item_name_raw: line.itemName,
             volume_ml_raw: line.volumeMl,
             category_raw: line.category,
+            style_raw: line.style,
+            country_raw: line.country,
             quantity: line.quantity,
             unit_price: line.unitPrice,
             line_total: line.lineTotal,

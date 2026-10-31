@@ -58,6 +58,8 @@ export function createSupabaseOpenAiService(supabase: SupabaseClient): OpenAiSer
             itemNameRaw: item.itemName,
             volumeMlRaw: item.volumeMl,
             categoryRaw: item.category,
+            styleRaw: item.style,
+            countryRaw: item.country,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             lineTotal: item.lineTotal,

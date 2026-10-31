@@ -200,6 +200,8 @@ export class MockStore {
         itemNameRaw: line.itemNameRaw,
         volumeMlRaw: line.volumeMlRaw ?? null,
         categoryRaw: line.categoryRaw ?? null,
+        styleRaw: line.styleRaw ?? null,
+        countryRaw: line.countryRaw ?? null,
         quantity: line.quantity,
         unitPrice: line.unitPrice,
         lineTotal: line.quantity * line.unitPrice,
@@ -265,6 +267,8 @@ export class MockStore {
         itemNameRaw: string
         volumeMlRaw: number | null
         categoryRaw: Wine['category']
+        styleRaw: Wine['style']
+        countryRaw: Wine['country']
         quantity: number
         unitPrice: number
         lineTotal: number
@@ -290,6 +294,8 @@ export class MockStore {
         itemNameRaw: line.itemNameRaw,
         volumeMlRaw: line.volumeMlRaw,
         categoryRaw: line.categoryRaw,
+        styleRaw: line.styleRaw,
+        countryRaw: line.countryRaw,
         quantity: line.quantity,
         unitPrice: line.unitPrice,
         lineTotal: line.lineTotal,

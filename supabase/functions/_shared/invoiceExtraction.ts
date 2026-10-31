@@ -3,30 +3,40 @@
 // boundary (see plan notes: bundler-version-dependent, and client.ts has a live
 // import.meta.env reference sitting next to the portable parts).
 
-export type WineCategory =
-  | 'red'
-  | 'white'
-  | 'rose'
-  | 'sparkling'
-  | 'dessert'
-  | 'fortified'
-  | 'beer'
-  | 'spirits'
-  | 'cider'
-  | 'non_alcoholic'
+export type WineCategory = 'wine' | 'hard_liquor' | 'beer' | 'sake' | 'other'
+
+export type WineStyle = 'red' | 'white' | 'sparkling' | 'other'
+
+export type WineCountry =
+  | 'france'
+  | 'italy'
+  | 'usa'
+  | 'spain'
+  | 'germany'
+  | 'argentina'
+  | 'chile'
+  | 'australia'
+  | 'new_zealand'
+  | 'portugal'
+  | 'south_africa'
+  | 'japan'
   | 'other'
 
-const WINE_CATEGORIES: readonly WineCategory[] = [
-  'red',
-  'white',
-  'rose',
-  'sparkling',
-  'dessert',
-  'fortified',
-  'beer',
-  'spirits',
-  'cider',
-  'non_alcoholic',
+const WINE_CATEGORIES: readonly WineCategory[] = ['wine', 'hard_liquor', 'beer', 'sake', 'other']
+const WINE_STYLES: readonly WineStyle[] = ['red', 'white', 'sparkling', 'other']
+const WINE_COUNTRIES: readonly WineCountry[] = [
+  'france',
+  'italy',
+  'usa',
+  'spain',
+  'germany',
+  'argentina',
+  'chile',
+  'australia',
+  'new_zealand',
+  'portugal',
+  'south_africa',
+  'japan',
   'other',
 ]
 
@@ -39,7 +49,7 @@ export function estimateOpenAiCostUsd(usage: TokenUsage): number {
   return usage.promptTokens * OPENAI_PRICE_PER_TOKEN_USD.input + usage.completionTokens * OPENAI_PRICE_PER_TOKEN_USD.output
 }
 
-export const INVOICE_EXTRACTION_PROMPT = `You are extracting structured data from a photo or scan of a beverage distributor invoice - wine, beer, spirits, cider, or non-alcoholic drinks.
+export const INVOICE_EXTRACTION_PROMPT = `You are extracting structured data from a photo or scan of a beverage distributor invoice - wine, beer, hard liquor, sake, or other drinks.
 
 Read the image carefully and return a single JSON object with exactly this shape:
 
@@ -51,7 +61,9 @@ Read the image carefully and return a single JSON object with exactly this shape
     {
       "itemName": string,        // the product name as printed, do not normalize or translate it - do NOT include the bottle/can size or pack size here, those go in "volumeMl" and "packSize"
       "volumeMl": number | null, // bottle/can size in milliliters - convert whatever unit is printed (750ml -> 750, 1.5L -> 1500, 375ml -> 375, a 25.4oz bottle -> 750, a 12oz can -> 355) - null if not shown
-      "category": "red" | "white" | "rose" | "sparkling" | "dessert" | "fortified" | "beer" | "spirits" | "cider" | "non_alcoholic" | "other" | null,
+      "category": "wine" | "hard_liquor" | "beer" | "sake" | "other" | null,
+      "style": "red" | "white" | "sparkling" | "other" | null,   // ONLY when category is "wine" - null for every other category
+      "country": "france" | "italy" | "usa" | "spain" | "germany" | "argentina" | "chile" | "australia" | "new_zealand" | "portugal" | "south_africa" | "japan" | "other" | null,   // ONLY when category is "wine" - null for every other category
       "quantity": number,        // how many of what's printed on this line - a pack/case count if the line is sold as packs (see packSize), not the total number of individual bottles/cans
       "unitPrice": number,       // price for one "quantity" unit as printed - a pack's price if this line is a pack, not a single bottle/can's price
       "lineTotal": number,
@@ -71,12 +83,16 @@ Rules:
 - If a field cannot be determined from the image, use null for strings/dates, 0 for numbers, 1 for packSize, and [] for lineItems/additionalCharges.
 - Preserve item names exactly as printed on the invoice, including vintage years if shown, but leave the
   bottle/can size and pack size out of itemName - put them in "volumeMl" and "packSize" instead.
-- Infer "category" from the product name and any label details visible (e.g. "Cabernet Sauvignon" is red,
-  "Sauvignon Blanc" is white, "Champagne"/"Prosecco"/"Brut" is sparkling, "IPA"/"Lager"/"Ale" is beer,
-  "Vodka"/"Whiskey"/"Tequila" is spirits, sodas/juices/mixers with no alcohol are non_alcoholic). Use null
-  only if you genuinely cannot tell - do not guess "other" as a default.
-- lineItems is for every beverage product being purchased, not just wine - beer, spirits, cider, mixers,
-  and non-alcoholic drinks all belong here too. Put every other charge or adjustment on the invoice - tax,
+- Infer "category" from the product name and any label details visible (e.g. "Cabernet Sauvignon", "Sauvignon
+  Blanc", "Champagne"/"Prosecco"/"Brut", and "Port"/"Sherry" are all wine, "IPA"/"Lager"/"Ale" is beer,
+  "Vodka"/"Whiskey"/"Tequila" is hard_liquor, "Sake"/"Junmai"/"Nigori" is sake). Use null only if you
+  genuinely cannot tell - do not guess "other" as a default.
+- Only when "category" is "wine", also infer "style" (red/white/sparkling, or "other" for rosé/dessert/
+  fortified/anything else) and "country" (country of origin, e.g. "Product of Italy" or implied by the
+  grape/appellation/producer - not the language on the label). Leave both null if category isn't "wine",
+  or if you genuinely cannot tell even though it is wine - do not guess.
+- lineItems is for every beverage product being purchased, not just wine - beer, hard liquor, sake, and
+  other drinks all belong here too. Put every other charge or adjustment on the invoice - tax,
   GST/VAT, bottle/case deposits, shipping, fuel surcharges, fees, discounts, credits - into
   additionalCharges instead, never into lineItems. Use a negative amount for discounts/credits.
 - Numbers must be plain JSON numbers (no currency symbols, no thousands separators).`
@@ -85,6 +101,10 @@ export interface ExtractedLineItem {
   itemName: string
   volumeMl: number | null
   category: WineCategory | null
+  /** Only meaningful when category is 'wine'. */
+  style: WineStyle | null
+  /** Only meaningful when category is 'wine'. */
+  country: WineCountry | null
   quantity: number
   unitPrice: number
   lineTotal: number
@@ -130,6 +150,14 @@ function toCategoryOrNull(value: unknown): WineCategory | null {
   return WINE_CATEGORIES.includes(value as WineCategory) ? (value as WineCategory) : null
 }
 
+function toStyleOrNull(value: unknown): WineStyle | null {
+  return WINE_STYLES.includes(value as WineStyle) ? (value as WineStyle) : null
+}
+
+function toCountryOrNull(value: unknown): WineCountry | null {
+  return WINE_COUNTRIES.includes(value as WineCountry) ? (value as WineCountry) : null
+}
+
 /** Units per pack (a "6-pack", "case of 24") - 1 (sold individually) for anything unparseable or less than 1. */
 function toPackSize(value: unknown): number {
   const num = typeof value === 'number' ? value : Number(value)
@@ -147,10 +175,14 @@ export function coerceExtractedInvoice(value: unknown): ExtractedInvoice {
     totalAmount: toNumber(obj.totalAmount),
     lineItems: rawLineItems.map((item) => {
       const line = (item ?? {}) as Record<string, unknown>
+      const category = toCategoryOrNull(line.category)
       return {
         itemName: typeof line.itemName === 'string' ? line.itemName : 'Unknown item',
         volumeMl: toPositiveIntOrNull(line.volumeMl),
-        category: toCategoryOrNull(line.category),
+        category,
+        // Style/country only make sense for wine - ignore the model's guess otherwise.
+        style: category === 'wine' ? toStyleOrNull(line.style) : null,
+        country: category === 'wine' ? toCountryOrNull(line.country) : null,
         quantity: toNumber(line.quantity),
         unitPrice: toNumber(line.unitPrice),
         lineTotal: toNumber(line.lineTotal),

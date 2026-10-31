@@ -68,8 +68,12 @@ export interface InvoiceLineItem {
   itemNameRaw: string
   /** Bottle size in milliliters, normalized from whatever unit the invoice printed - kept separate from itemNameRaw so it can pre-fill a new wine's `volumeMl` field. */
   volumeMlRaw: number | null
-  /** Best-effort category guess from the item name, e.g. "red"/"white" - pre-fills a new wine's `category` field. */
+  /** Best-effort category guess from the item name, e.g. "wine"/"beer" - pre-fills a new wine's `category` field. */
   categoryRaw: WineCategory | null
+  /** Best-effort style guess, only set when categoryRaw is 'wine' - pre-fills a new wine's `style` field. */
+  styleRaw: WineStyle | null
+  /** Best-effort country-of-origin guess, only set when categoryRaw is 'wine' - pre-fills a new wine's `country` field. */
+  countryRaw: WineCountry | null
   /** How many of what's printed on the invoice line - a pack/case count when packSize > 1, otherwise the same as the unit count. */
   quantity: number
   /** Price for one `quantity` unit as printed (a pack's price, not a single bottle/can's) - lineTotal is always quantity * unitPrice, matching the invoice. */

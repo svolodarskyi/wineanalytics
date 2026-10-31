@@ -15,17 +15,23 @@ export function estimateAnthropicCostUsd(usage: TokenUsage): number {
   return usage.promptTokens * ANTHROPIC_PRICE_PER_TOKEN_USD.input + usage.completionTokens * ANTHROPIC_PRICE_PER_TOKEN_USD.output
 }
 
-const WINE_CATEGORY_ENUM = [
-  'red',
-  'white',
-  'rose',
-  'sparkling',
-  'dessert',
-  'fortified',
-  'beer',
-  'spirits',
-  'cider',
-  'non_alcoholic',
+const WINE_CATEGORY_ENUM = ['wine', 'hard_liquor', 'beer', 'sake', 'other'] as const
+
+const WINE_STYLE_ENUM = ['red', 'white', 'sparkling', 'other'] as const
+
+const WINE_COUNTRY_ENUM = [
+  'france',
+  'italy',
+  'usa',
+  'spain',
+  'germany',
+  'argentina',
+  'chile',
+  'australia',
+  'new_zealand',
+  'portugal',
+  'south_africa',
+  'japan',
   'other',
 ] as const
 
@@ -35,6 +41,8 @@ const WINE_CATEGORY_ENUM = [
 const NULLABLE_STRING = { anyOf: [{ type: 'string' }, { type: 'null' }] }
 const NULLABLE_NUMBER = { anyOf: [{ type: 'number' }, { type: 'null' }] }
 const NULLABLE_CATEGORY = { anyOf: [{ type: 'string', enum: WINE_CATEGORY_ENUM }, { type: 'null' }] }
+const NULLABLE_STYLE = { anyOf: [{ type: 'string', enum: WINE_STYLE_ENUM }, { type: 'null' }] }
+const NULLABLE_COUNTRY = { anyOf: [{ type: 'string', enum: WINE_COUNTRY_ENUM }, { type: 'null' }] }
 
 const INVOICE_JSON_SCHEMA = {
   type: 'object',
@@ -50,12 +58,14 @@ const INVOICE_JSON_SCHEMA = {
           itemName: { type: 'string' },
           volumeMl: NULLABLE_NUMBER,
           category: NULLABLE_CATEGORY,
+          style: NULLABLE_STYLE,
+          country: NULLABLE_COUNTRY,
           quantity: { type: 'number' },
           unitPrice: { type: 'number' },
           lineTotal: { type: 'number' },
           packSize: { type: 'number' },
         },
-        required: ['itemName', 'volumeMl', 'category', 'quantity', 'unitPrice', 'lineTotal', 'packSize'],
+        required: ['itemName', 'volumeMl', 'category', 'style', 'country', 'quantity', 'unitPrice', 'lineTotal', 'packSize'],
         additionalProperties: false,
       },
     },

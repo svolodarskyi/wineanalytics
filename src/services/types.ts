@@ -176,6 +176,10 @@ export interface OpenAiExtractedLine {
   itemNameRaw: string
   volumeMlRaw: number | null
   categoryRaw: WineCategory | null
+  /** Only meaningful when categoryRaw is 'wine'. */
+  styleRaw: WineStyle | null
+  /** Only meaningful when categoryRaw is 'wine'. */
+  countryRaw: WineCountry | null
   quantity: number
   unitPrice: number
   lineTotal: number
