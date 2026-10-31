@@ -27,5 +27,6 @@ export const WINE_COUNTRY_OPTIONS: { value: WineCountry; label: string }[] = [
   { value: 'new_zealand', label: 'New Zealand' },
   { value: 'portugal', label: 'Portugal' },
   { value: 'south_africa', label: 'South Africa' },
+  { value: 'japan', label: 'Japan' },
   { value: 'other', label: 'Other' },
 ]

@@ -22,6 +22,7 @@ export type WineCountry =
   | 'new_zealand'
   | 'portugal'
   | 'south_africa'
+  | 'japan'
   | 'other'
 
 export interface Wine {
