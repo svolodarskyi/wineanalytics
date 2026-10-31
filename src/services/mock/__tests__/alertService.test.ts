@@ -45,8 +45,6 @@ describe('mock alert service', () => {
         id: createId('wine'),
         name: 'Low Stock Wine',
         invoiceName: null,
-  producer: null,
-        country: null,
         volumeMl: null,
         category: null,
         imageDataUrls: [],
@@ -66,7 +64,7 @@ describe('mock alert service', () => {
     it('does not flag a wine whose balance meets or exceeds its threshold', async () => {
       const store = new MockStore({ seed: false })
       const wine = { id: createId('wine'), name: 'Well Stocked Wine', invoiceName: null,
-  producer: null, country: null, volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
+ volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
       store.wines.push(wine)
 
       const alerts = createMockAlertService(store, 0)
@@ -79,7 +77,7 @@ describe('mock alert service', () => {
     it('ignores wines with no configured threshold', async () => {
       const store = new MockStore({ seed: false })
       const wine = { id: createId('wine'), name: 'No Threshold Wine', invoiceName: null,
-  producer: null, country: null, volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
+ volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
       store.wines.push(wine)
 
       const alerts = createMockAlertService(store, 0)
@@ -89,7 +87,7 @@ describe('mock alert service', () => {
     it('setThreshold upserts - a second call for the same wine updates rather than duplicating', async () => {
       const store = new MockStore({ seed: false })
       const wine = { id: createId('wine'), name: 'Wine', invoiceName: null,
-  producer: null, country: null, volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
+ volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
       store.wines.push(wine)
       const alerts = createMockAlertService(store, 0)
 
@@ -108,7 +106,7 @@ describe('mock alert service', () => {
       await expect(alerts.setThreshold('missing-wine', 5)).rejects.toThrow(/wine not found/i)
 
       const wine = { id: createId('wine'), name: 'Wine', invoiceName: null,
-  producer: null, country: null, volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
+ volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
       store.wines.push(wine)
       await expect(alerts.setThreshold(wine.id, -1)).rejects.toThrow(/non-negative/i)
     })
@@ -116,7 +114,7 @@ describe('mock alert service', () => {
     it('setThresholdActive pauses a threshold without changing its level, and reactivating restores the alert', async () => {
       const store = new MockStore({ seed: false })
       const wine = { id: createId('wine'), name: 'Wine', invoiceName: null,
-  producer: null, country: null, volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
+ volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
       store.wines.push(wine)
       const alerts = createMockAlertService(store, 0)
       pushApprovedInvoice(store, wine.id, 2)
@@ -135,7 +133,7 @@ describe('mock alert service', () => {
     it('setThreshold reactivates a previously deactivated threshold', async () => {
       const store = new MockStore({ seed: false })
       const wine = { id: createId('wine'), name: 'Wine', invoiceName: null,
-  producer: null, country: null, volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
+ volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
       store.wines.push(wine)
       const alerts = createMockAlertService(store, 0)
       await alerts.setThreshold(wine.id, 5)
@@ -155,7 +153,7 @@ describe('mock alert service', () => {
     it('deleteThreshold removes it, so the wine no longer appears even if understocked', async () => {
       const store = new MockStore({ seed: false })
       const wine = { id: createId('wine'), name: 'Wine', invoiceName: null,
-  producer: null, country: null, volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
+ volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
       store.wines.push(wine)
       const alerts = createMockAlertService(store, 0)
       await alerts.setThreshold(wine.id, 5)
@@ -173,8 +171,6 @@ describe('mock alert service', () => {
         id: createId('wine'),
         name: 'Complete Wine',
         invoiceName: null,
-  producer: null,
-        country: 'USA',
         volumeMl: 750,
         category: 'red' as const,
         imageDataUrls: [],
@@ -185,8 +181,6 @@ describe('mock alert service', () => {
         id: createId('wine'),
         name: 'Incomplete Wine',
         invoiceName: null,
-  producer: null,
-        country: null,
         volumeMl: 750,
         category: null,
         imageDataUrls: [],
@@ -198,10 +192,7 @@ describe('mock alert service', () => {
       const alerts = createMockAlertService(store, 0)
       const dataQualityAlerts = await alerts.listDataQualityAlerts()
 
-      expect(dataQualityAlerts).toEqual([
-        { wine: incomplete, field: 'country' },
-        { wine: incomplete, field: 'category' },
-      ])
+      expect(dataQualityAlerts).toEqual([{ wine: incomplete, field: 'category' }])
     })
 
     it('skips inactive wines', async () => {
@@ -210,8 +201,6 @@ describe('mock alert service', () => {
         id: createId('wine'),
         name: 'Retired Wine',
         invoiceName: null,
-  producer: null,
-        country: null,
         volumeMl: null,
         category: null,
         imageDataUrls: [],
@@ -228,7 +217,7 @@ describe('mock alert service', () => {
   describe('sales quality alerts', () => {
     function pushWineAndSale(store: MockStore, volumeMl: number) {
       const wine = { id: createId('wine'), name: 'Wine', invoiceName: null,
-  producer: null, country: null, volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
+ volumeMl: null, category: null, imageDataUrls: [], active: true, createdAt: new Date().toISOString() }
       store.wines.push(wine)
       store.addSale({
         id: createId('sale'),

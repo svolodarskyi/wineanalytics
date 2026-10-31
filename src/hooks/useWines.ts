@@ -44,7 +44,6 @@ export function useCreateWine() {
     mutationFn: (input: {
       name: string
       invoiceName?: string | null
-      country?: string | null
       volumeMl?: number | null
       category?: Wine['category']
       imageDataUrls?: string[]
@@ -63,7 +62,6 @@ export function useUpdateWine() {
       id: string
       name: string
       invoiceName?: string | null
-      country?: string | null
       volumeMl?: number | null
       category?: Wine['category']
       imageDataUrls?: string[]

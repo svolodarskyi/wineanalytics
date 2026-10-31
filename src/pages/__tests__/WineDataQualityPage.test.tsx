@@ -19,15 +19,13 @@ describe('WineDataQualityPage', () => {
     const wine = await testServicesState.current.wines.create({ name: 'Incomplete Wine' })
     renderWithProviders(<WineDataQualityPage />, { route: `/wines/${wine.id}`, path: '/wines/:wineId' })
 
-    expect(await screen.findByText('Country')).toBeInTheDocument()
-    expect(screen.getByText('Volume')).toBeInTheDocument()
+    expect(await screen.findByText('Volume')).toBeInTheDocument()
     expect(screen.getByText('Category')).toBeInTheDocument()
   })
 
   it('shows an all-clear message when every tracked field is filled in', async () => {
     const wine = await testServicesState.current.wines.create({
       name: 'Complete Wine',
-      country: 'USA',
       volumeMl: 750,
       category: 'red',
     })

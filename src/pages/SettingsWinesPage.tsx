@@ -38,7 +38,6 @@ export function SettingsWinesPage() {
       onSetActive={(id, active) => setWineActive.mutateAsync({ id, active })}
       onDelete={(id) => deleteWine.mutateAsync(id)}
       onScanWine={(imageDataUrls) => extractWine.mutateAsync(imageDataUrls)}
-      showCountry
       showWineDetails
       showImage
       autoOpenId={autoOpenWineId}

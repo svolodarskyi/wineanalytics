@@ -38,8 +38,6 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
     async create(input: {
       name: string
       invoiceName?: string | null
-      producer?: string | null
-      country?: string | null
       volumeMl?: number | null
       category?: Wine['category']
       imageDataUrls?: string[]
@@ -53,8 +51,6 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
         id: createId('wine'),
         name,
         invoiceName: input.invoiceName?.trim() || null,
-        producer: input.producer?.trim() || null,
-        country: input.country?.trim() || null,
         volumeMl: normalizeVolumeMl(input.volumeMl),
         category: input.category ?? null,
         imageDataUrls: (input.imageDataUrls ?? []).slice(0, 3),
@@ -70,8 +66,6 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
       input: {
         name: string
         invoiceName?: string | null
-        producer?: string | null
-        country?: string | null
         volumeMl?: number | null
         category?: Wine['category']
         imageDataUrls?: string[]
@@ -85,8 +79,6 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
         ...wine,
         name,
         invoiceName: input.invoiceName?.trim() || null,
-        producer: input.producer?.trim() || null,
-        country: input.country?.trim() || null,
         volumeMl: normalizeVolumeMl(input.volumeMl),
         category: input.category ?? null,
         imageDataUrls: input.imageDataUrls !== undefined ? input.imageDataUrls.slice(0, 3) : wine.imageDataUrls,

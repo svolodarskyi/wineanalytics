@@ -24,7 +24,7 @@ describe('extractWinePhotos', () => {
 
   it('sends every photo as its own image_url content part alongside the wine-scan prompt', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      fakeOpenAiResponse({ name: 'Cabernet Sauvignon', producer: 'Caymus', volumeMl: 750, country: 'USA', category: 'red' }),
+      fakeOpenAiResponse({ name: 'Cabernet Sauvignon', volumeMl: 750, category: 'red' }),
     )
     vi.stubGlobal('fetch', fetchMock)
 
@@ -43,7 +43,7 @@ describe('extractWinePhotos', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        fakeOpenAiResponse({ name: 'Cabernet Sauvignon', producer: 'Caymus Vineyards', volumeMl: 750, country: 'USA', category: 'red' }),
+        fakeOpenAiResponse({ name: 'Cabernet Sauvignon', volumeMl: 750, category: 'red' }),
       ),
     )
 
@@ -51,9 +51,7 @@ describe('extractWinePhotos', () => {
 
     expect(result.parsed).toEqual({
       name: 'Cabernet Sauvignon',
-      producer: 'Caymus Vineyards',
       volumeMl: 750,
-      country: 'USA',
       category: 'red',
     })
     expect(result.usage).toEqual({ promptTokens: 100, completionTokens: 20, totalTokens: 120 })
@@ -67,7 +65,7 @@ describe('extractWinePhotos', () => {
 
     const result = await extractWinePhotos(['data:image/png;base64,AAAA'])
 
-    expect(result.parsed).toEqual({ name: 'Some Wine', producer: null, volumeMl: null, country: null, category: null })
+    expect(result.parsed).toEqual({ name: 'Some Wine', volumeMl: null, category: null })
   })
 
   it('throws when the API key is not configured', async () => {

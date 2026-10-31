@@ -3,28 +3,26 @@ import { createId } from './ids'
 
 export function seedWines(): Wine[] {
   const now = new Date().toISOString()
-  const wines: { name: string; country: string; category: Wine['category']; volumeMl: number | null }[] = [
-    { name: 'Chateau Ste. Michelle Riesling', country: 'USA', category: 'white', volumeMl: 750 },
-    { name: 'Caymus Cabernet Sauvignon', country: 'USA', category: 'red', volumeMl: 750 },
-    { name: 'Kim Crawford Sauvignon Blanc', country: 'New Zealand', category: 'white', volumeMl: 750 },
-    { name: 'Veuve Clicquot Brut', country: 'France', category: 'sparkling', volumeMl: 750 },
-    { name: 'Antinori Tignanello', country: 'Italy', category: 'red', volumeMl: 750 },
-    { name: 'La Crema Pinot Noir', country: 'USA', category: 'red', volumeMl: 750 },
-    { name: 'Whispering Angel Rose', country: 'France', category: 'rose', volumeMl: 750 },
-    { name: 'Chateau d\'Yquem Sauternes', country: 'France', category: 'dessert', volumeMl: 375 },
-    { name: 'Taylor Fladgate 20 Year Tawny Port', country: 'Portugal', category: 'fortified', volumeMl: 750 },
-    { name: 'Domaine Serene Pinot Noir', country: 'USA', category: 'red', volumeMl: 750 },
-    { name: 'Josh Cellars Cabernet', country: 'USA', category: 'red', volumeMl: 750 },
+  const wines: { name: string; category: Wine['category']; volumeMl: number | null }[] = [
+    { name: 'Chateau Ste. Michelle Riesling', category: 'white', volumeMl: 750 },
+    { name: 'Caymus Cabernet Sauvignon', category: 'red', volumeMl: 750 },
+    { name: 'Kim Crawford Sauvignon Blanc', category: 'white', volumeMl: 750 },
+    { name: 'Veuve Clicquot Brut', category: 'sparkling', volumeMl: 750 },
+    { name: 'Antinori Tignanello', category: 'red', volumeMl: 750 },
+    { name: 'La Crema Pinot Noir', category: 'red', volumeMl: 750 },
+    { name: 'Whispering Angel Rose', category: 'rose', volumeMl: 750 },
+    { name: 'Chateau d\'Yquem Sauternes', category: 'dessert', volumeMl: 375 },
+    { name: 'Taylor Fladgate 20 Year Tawny Port', category: 'fortified', volumeMl: 750 },
+    { name: 'Domaine Serene Pinot Noir', category: 'red', volumeMl: 750 },
+    { name: 'Josh Cellars Cabernet', category: 'red', volumeMl: 750 },
     // No volumeMl yet - exercises the data-quality alert and the
     // purchased-only balance fallback for a wine that can't convert sales.
-    { name: 'Chandon Brut Rose', country: 'USA', category: 'sparkling', volumeMl: null },
+    { name: 'Chandon Brut Rose', category: 'sparkling', volumeMl: null },
   ]
-  return wines.map(({ name, country, category, volumeMl }) => ({
+  return wines.map(({ name, category, volumeMl }) => ({
     id: createId('wine'),
     name,
     invoiceName: null,
-    producer: null,
-    country,
     volumeMl,
     category,
     imageDataUrls: [],

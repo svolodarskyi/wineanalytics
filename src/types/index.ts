@@ -22,9 +22,6 @@ export interface Wine {
   name: string
   /** Name as it typically appears on vendor invoices, if different from the display name. Falls back to `name` for matching when unset. */
   invoiceName: string | null
-  /** Winery/producer, e.g. "Caymus Vineyards" - distinct from the wine's own name. */
-  producer: string | null
-  country: string | null
   /** Bottle size in milliliters, e.g. 750, 1500. The standard unit for inventory/volume math - never a formatted string. */
   volumeMl: number | null
   category: WineCategory | null
@@ -139,7 +136,7 @@ export interface InventoryAlert {
 }
 
 /** Wine fields checked for completeness - see src/utils/dataQuality.ts for the tracked-fields list. */
-export type DataQualityField = 'country' | 'volumeMl' | 'category'
+export type DataQualityField = 'volumeMl' | 'category'
 
 /** One missing field on one wine - each gets its own alert row, not grouped by wine. */
 export interface DataQualityAlert {

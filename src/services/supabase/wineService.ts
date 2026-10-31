@@ -11,8 +11,6 @@ interface WineRow {
   id: string
   name: string
   invoice_name: string | null
-  producer: string | null
-  country: string | null
   volume_ml: number | null
   category: Wine['category']
   image_urls: string[] | null
@@ -26,8 +24,6 @@ async function toWine(supabase: SupabaseClient, row: WineRow): Promise<Wine> {
     id: row.id,
     name: row.name,
     invoiceName: row.invoice_name,
-    producer: row.producer,
-    country: row.country,
     volumeMl: row.volume_ml,
     category: row.category,
     // A signing failure drops that one photo rather than failing the whole wine.
@@ -94,8 +90,6 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
     async create(input: {
       name: string
       invoiceName?: string | null
-      producer?: string | null
-      country?: string | null
       volumeMl?: number | null
       category?: Wine['category']
       imageDataUrls?: string[]
@@ -112,8 +106,6 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
           id,
           name,
           invoice_name: input.invoiceName?.trim() || null,
-          producer: input.producer?.trim() || null,
-          country: input.country?.trim() || null,
           volume_ml: normalizeVolumeMl(input.volumeMl),
           category: input.category ?? null,
           image_urls: imagePaths,
@@ -132,8 +124,6 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
       input: {
         name: string
         invoiceName?: string | null
-        producer?: string | null
-        country?: string | null
         volumeMl?: number | null
         category?: Wine['category']
         imageDataUrls?: string[]
@@ -157,8 +147,6 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
         .update({
           name,
           invoice_name: input.invoiceName?.trim() || null,
-          producer: input.producer?.trim() || null,
-          country: input.country?.trim() || null,
           volume_ml: normalizeVolumeMl(input.volumeMl),
           category: input.category ?? null,
           ...(imagePaths !== undefined ? { image_urls: imagePaths } : {}),

@@ -12,7 +12,7 @@ export function useOpenAiLogs() {
   })
 }
 
-/** Sends 1-3 bottle photos to OpenAI and returns suggested name/producer/volume/country/category - review before saving, same as OCR-extracted invoice fields. */
+/** Sends 1-3 bottle photos to OpenAI and returns suggested name/volume/category - review before saving, same as OCR-extracted invoice fields. */
 export function useExtractWine() {
   const queryClient = useQueryClient()
   return useMutation({

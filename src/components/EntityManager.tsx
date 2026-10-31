@@ -12,8 +12,6 @@ interface Entity {
   name: string
   invoiceName?: string | null
   active: boolean
-  producer?: string | null
-  country?: string | null
   volumeMl?: number | null
   category?: WineCategory | null
   imageDataUrls?: string[]
@@ -22,8 +20,6 @@ interface Entity {
 interface EntityInput {
   name: string
   invoiceName?: string | null
-  producer?: string | null
-  country?: string
   volumeMl?: number | null
   category?: WineCategory | null
   imageDataUrls?: string[]
@@ -43,8 +39,6 @@ interface EntityManagerProps {
   onSetActive: (id: string, active: boolean) => Promise<unknown>
   /** Permanently removes the item. Rejects if it has invoice history - the caller should deactivate instead. */
   onDelete: (id: string) => Promise<unknown>
-  /** Shows a Country field in the create/detail popups. Wines only. */
-  showCountry?: boolean
   /** Shows Volume and Category fields in the create/detail popups. Wines only. */
   showWineDetails?: boolean
   /** Shows a photo upload/thumbnail. Wines only. */
@@ -58,9 +52,7 @@ interface EntityManagerProps {
   /** Sends the currently-added photos to OpenAI and returns suggested field values to pre-fill (never auto-saved - the user still reviews/edits before creating). Wines only, new-item modal only. */
   onScanWine?: (imageDataUrls: string[]) => Promise<{
     name: string | null
-    producer: string | null
     volumeMl: number | null
-    country: string | null
     category: WineCategory | null
   }>
 }
@@ -168,7 +160,7 @@ function ScanBottleButton({
   return (
     <div className="scan-bottle-cta">
       <p className="page-header__meta" style={{ marginTop: 0, marginBottom: 8 }}>
-        Scan a bottle: Name, Producer, Country, Volume, and Category below get filled in for review.
+        Scan a bottle: Name, Volume, and Category below get filled in for review.
       </p>
       <PhotoPickerButtons onFilesSelected={onFilesSelected} primary disabled={isScanning} />
       {isScanning && <p className="page-header__meta" style={{ marginTop: 6 }}>Scanning bottle...</p>}
@@ -191,7 +183,6 @@ export function EntityManager({
   onUpdate,
   onSetActive,
   onDelete,
-  showCountry,
   showWineDetails,
   showImage,
   autoOpenId,
@@ -202,8 +193,6 @@ export function EntityManager({
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [newName, setNewName] = useState('')
   const [newInvoiceName, setNewInvoiceName] = useState('')
-  const [newProducer, setNewProducer] = useState('')
-  const [newCountry, setNewCountry] = useState('')
   const [newVolume, setNewVolume] = useState('')
   const [newCategory, setNewCategory] = useState<WineCategory | ''>('')
   const [newImages, setNewImages] = useState<string[]>([])
@@ -215,8 +204,6 @@ export function EntityManager({
   const [detailItem, setDetailItem] = useState<Entity | null>(null)
   const [detailName, setDetailName] = useState('')
   const [detailInvoiceName, setDetailInvoiceName] = useState('')
-  const [detailProducer, setDetailProducer] = useState('')
-  const [detailCountry, setDetailCountry] = useState('')
   const [detailVolume, setDetailVolume] = useState('')
   const [detailCategory, setDetailCategory] = useState<WineCategory | ''>('')
   const [detailImages, setDetailImages] = useState<string[]>([])
@@ -227,8 +214,6 @@ export function EntityManager({
   function openCreateModal() {
     setNewName('')
     setNewInvoiceName('')
-    setNewProducer('')
-    setNewCountry('')
     setNewVolume('')
     setNewCategory('')
     setNewImages([])
@@ -244,8 +229,6 @@ export function EntityManager({
     try {
       const result = await onScanWine(images)
       if (result.name) setNewName(result.name)
-      if (result.producer) setNewProducer(result.producer)
-      if (result.country) setNewCountry(result.country)
       if (result.volumeMl) setNewVolume(String(result.volumeMl))
       if (result.category) setNewCategory(result.category)
     } catch (err) {
@@ -271,8 +254,6 @@ export function EntityManager({
       await onCreate({
         name: newName,
         invoiceName: newInvoiceName,
-        producer: newProducer,
-        country: newCountry,
         volumeMl: newVolume ? Number(newVolume) : null,
         category: newCategory || null,
         imageDataUrls: await normalizeImagesForSave(newImages),
@@ -289,8 +270,6 @@ export function EntityManager({
     setDetailItem(entity)
     setDetailName(entity.name)
     setDetailInvoiceName(entity.invoiceName ?? '')
-    setDetailProducer(entity.producer ?? '')
-    setDetailCountry(entity.country ?? '')
     setDetailVolume(entity.volumeMl != null ? String(entity.volumeMl) : '')
     setDetailCategory(entity.category ?? '')
     setDetailImages(entity.imageDataUrls ?? [])
@@ -320,8 +299,6 @@ export function EntityManager({
       await onUpdate(detailItem.id, {
         name: detailName,
         invoiceName: detailInvoiceName,
-        producer: detailProducer,
-        country: detailCountry,
         volumeMl: detailVolume ? Number(detailVolume) : null,
         category: detailCategory || null,
         imageDataUrls: await normalizeImagesForSave(detailImages),
@@ -392,27 +369,6 @@ export function EntityManager({
             </div>
             {showWineDetails && (
               <div className="field">
-                <label htmlFor="new-entity-producer">Producer</label>
-                <input
-                  id="new-entity-producer"
-                  value={newProducer}
-                  onChange={(event) => setNewProducer(event.target.value)}
-                  placeholder="e.g. Caymus Vineyards"
-                />
-              </div>
-            )}
-            {showCountry && (
-              <div className="field">
-                <label htmlFor="new-entity-country">Country</label>
-                <input
-                  id="new-entity-country"
-                  value={newCountry}
-                  onChange={(event) => setNewCountry(event.target.value)}
-                />
-              </div>
-            )}
-            {showWineDetails && (
-              <div className="field">
                 <label htmlFor="new-entity-volume">Volume (ml)</label>
                 <input
                   id="new-entity-volume"
@@ -476,27 +432,6 @@ export function EntityManager({
                 placeholder="Name as it appears on invoices, if different"
               />
             </div>
-            {showWineDetails && (
-              <div className="field">
-                <label htmlFor="detail-entity-producer">Producer</label>
-                <input
-                  id="detail-entity-producer"
-                  value={detailProducer}
-                  onChange={(event) => setDetailProducer(event.target.value)}
-                  placeholder="e.g. Caymus Vineyards"
-                />
-              </div>
-            )}
-            {showCountry && (
-              <div className="field">
-                <label htmlFor="detail-entity-country">Country</label>
-                <input
-                  id="detail-entity-country"
-                  value={detailCountry}
-                  onChange={(event) => setDetailCountry(event.target.value)}
-                />
-              </div>
-            )}
             {showWineDetails && (
               <div className="field">
                 <label htmlFor="detail-entity-volume">Volume (ml)</label>

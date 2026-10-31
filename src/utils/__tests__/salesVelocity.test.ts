@@ -6,8 +6,6 @@ const wine: Wine = {
   id: 'wine_1',
   name: 'Test Wine',
   invoiceName: null,
-  producer: null,
-  country: null,
   volumeMl: 750,
   category: 'red',
   imageDataUrls: [],

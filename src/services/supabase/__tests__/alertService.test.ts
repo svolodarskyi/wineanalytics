@@ -7,7 +7,6 @@ const WINE_ROW = {
   id: 'w1',
   name: 'Caymus Cabernet Sauvignon',
   invoice_name: null,
-  country: 'USA',
   volume_ml: 750,
   category: 'red',
   active: true,
@@ -88,15 +87,12 @@ describe('supabase alert service', () => {
   describe('listDataQualityAlerts', () => {
     it('emits one alert per missing tracked field', async () => {
       const from = routedSupabaseFrom({
-        wine_wines: [{ data: [{ ...WINE_ROW, country: null, category: null }] }],
+        wine_wines: [{ data: [{ ...WINE_ROW, category: null }] }],
       })
       const alerts = createSupabaseAlertService(supabaseWith(from))
 
       const result = await alerts.listDataQualityAlerts()
-      expect(result).toEqual([
-        { wine: expect.objectContaining({ id: 'w1' }), field: 'country' },
-        { wine: expect.objectContaining({ id: 'w1' }), field: 'category' },
-      ])
+      expect(result).toEqual([{ wine: expect.objectContaining({ id: 'w1' }), field: 'category' }])
     })
 
     it('is empty for a fully filled-in wine', async () => {

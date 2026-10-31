@@ -67,8 +67,6 @@ describe('computeInventoryValue', () => {
     id: 'w1',
     name: 'Corona',
     invoiceName: null,
-    producer: null,
-    country: null,
     volumeMl: 355,
     category: 'beer',
     imageDataUrls: [],

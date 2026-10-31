@@ -1,3 +1,9 @@
+- do we rename from wine analytics to somelier analytics... and win to -what?
+- update properties - see excalidraw notes
+- when taking the picture see if we can rotate picture.
+
+- see other notes from last meeting with Toshi
+
 closer to APPLE style. try schadcn style
 inventoyr alerts https://squareup.com/help/ca/en/article/8333-create-inventory-alerts
 win sales analytics on teh first page. select time frame. which graphs?no

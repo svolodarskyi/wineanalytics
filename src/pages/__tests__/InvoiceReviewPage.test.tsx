@@ -206,12 +206,11 @@ describe('InvoiceReviewPage', () => {
     await user.click(within(row).getByRole('button', { name: /^approve$/i })) // only the category one remains
     expect(createButton).toBeEnabled()
 
-    // Country stays optional even though volume/category needed approval.
     await user.click(createButton)
     await waitFor(() => expect(within(row).getByText('Resolved')).toBeInTheDocument())
 
     const created = (await testServicesState.current.wines.list()).find((w) => w.name === 'Caymus Cabernet Sauvignon')
-    expect(created).toMatchObject({ volumeMl: 750, category: 'red', country: null })
+    expect(created).toMatchObject({ volumeMl: 750, category: 'red' })
   })
 
   it('lets category be cleared instead of approved, with no gate once it is empty', async () => {

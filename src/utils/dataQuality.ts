@@ -7,15 +7,12 @@ import type { DataQualityField, Wine } from '../types'
  * change what's tracked everywhere at once.
  */
 export const DATA_QUALITY_FIELDS: { field: DataQualityField; label: string }[] = [
-  { field: 'country', label: 'Country' },
   { field: 'volumeMl', label: 'Volume' },
   { field: 'category', label: 'Category' },
 ]
 
 export function isDataQualityFieldMissing(wine: Wine, field: DataQualityField): boolean {
   switch (field) {
-    case 'country':
-      return wine.country == null
     case 'volumeMl':
       return wine.volumeMl == null
     case 'category':

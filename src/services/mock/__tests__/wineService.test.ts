@@ -81,20 +81,9 @@ describe('mock wine service', () => {
     expect(results[0].name).toBe('Zinfandel Reserve')
   })
 
-  it('stores and updates a country, defaulting to null when omitted', async () => {
-    const wine = await services.wines.create({ name: 'No Country Wine' })
-    expect(wine.country).toBeNull()
-
-    const withCountry = await services.wines.create({ name: 'French Wine', country: 'France' })
-    expect(withCountry.country).toBe('France')
-
-    const updated = await services.wines.update(withCountry.id, { name: 'French Wine', country: 'Italy' })
-    expect(updated.country).toBe('Italy')
-  })
-
   it('always lists wines sorted alphabetically by name', async () => {
-    await services.wines.create({ name: 'Zeta Wine', country: 'Argentina' })
-    await services.wines.create({ name: 'Alpha Wine', country: 'Chile' })
+    await services.wines.create({ name: 'Zeta Wine' })
+    await services.wines.create({ name: 'Alpha Wine' })
 
     const wines = await services.wines.list()
     const names = wines.map((w) => w.name)

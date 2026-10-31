@@ -651,9 +651,8 @@ function LineItemEditForm({
  * wine SKU that doesn't exist yet. Volume and category are often
  * OCR-extracted straight from the invoice, so a prefilled value must be
  * explicitly approved (or cleared) before the wine can be created rather
- * than silently accepted - OCR can misread either one. Country is never
- * extracted here and is always optional. Anything left blank shows up
- * under Alerts > Data Quality.
+ * than silently accepted - OCR can misread either one. Anything left
+ * blank shows up under Alerts > Data Quality.
  */
 function NewWineReviewFields({
   name,
@@ -671,7 +670,6 @@ function NewWineReviewFields({
   const [volumeApproved, setVolumeApproved] = useState(line.volumeMlRaw == null)
   const [category, setCategory] = useState<WineCategory | ''>(line.categoryRaw ?? '')
   const [categoryApproved, setCategoryApproved] = useState(line.categoryRaw == null)
-  const [country, setCountry] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
 
@@ -688,7 +686,6 @@ function NewWineReviewFields({
         invoiceName: name,
         volumeMl: volumeInput.trim() ? Number(volumeInput) : null,
         category: category || null,
-        country: country.trim() || null,
       })
       onCreated(wine.id)
     } catch (err) {
@@ -755,17 +752,7 @@ function NewWineReviewFields({
         {line.categoryRaw != null && <p className="match-row__raw">Extracted from invoice - review before saving.</p>}
       </div>
 
-      <div className="field">
-        <label htmlFor="new-wine-country">Country</label>
-        <input
-          id="new-wine-country"
-          value={country}
-          onChange={(event) => setCountry(event.target.value)}
-          placeholder="Fill out later"
-        />
-      </div>
-
-      <p className="page-header__meta">Country can be filled out later - missing fields show up under Alerts &gt; Data Quality.</p>
+      <p className="page-header__meta">Missing fields show up under Alerts &gt; Data Quality.</p>
 
       {error && <p className="notice notice--error">{error}</p>}
 

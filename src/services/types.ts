@@ -42,8 +42,6 @@ export interface WineService {
   create(input: {
     name: string
     invoiceName?: string | null
-    producer?: string | null
-    country?: string | null
     volumeMl?: number | null
     category?: WineCategory | null
     /** Undefined leaves photos untouched; an array (0-3 entries) replaces the whole set. */
@@ -54,8 +52,6 @@ export interface WineService {
     input: {
       name: string
       invoiceName?: string | null
-      producer?: string | null
-      country?: string | null
       volumeMl?: number | null
       category?: WineCategory | null
       /** Undefined leaves photos untouched; an array (0-3 entries) replaces the whole set. */
@@ -188,9 +184,7 @@ export interface OpenAiService {
   /** Sends 1-3 photos of a single bottle to OpenAI for label extraction, logging the request/response/cost the same way extractInvoice does. */
   extractWine(input: { imageDataUrls: string[] }): Promise<{
     name: string | null
-    producer: string | null
     volumeMl: number | null
-    country: string | null
     category: WineCategory | null
   }>
   listLogs(): Promise<OpenAiRequestLog[]>

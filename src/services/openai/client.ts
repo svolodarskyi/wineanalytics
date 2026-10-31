@@ -36,9 +36,7 @@ export interface OpenAiExtractedInvoice {
 
 export interface OpenAiExtractedWine {
   name: string | null
-  producer: string | null
   volumeMl: number | null
-  country: string | null
   category: WineCategory | null
 }
 
@@ -110,9 +108,7 @@ function coerceExtractedWine(value: unknown): OpenAiExtractedWine {
   const obj = (value ?? {}) as Record<string, unknown>
   return {
     name: toTrimmedStringOrNull(obj.name),
-    producer: toTrimmedStringOrNull(obj.producer),
     volumeMl: toPositiveIntOrNull(obj.volumeMl),
-    country: toTrimmedStringOrNull(obj.country),
     category: toCategoryOrNull(obj.category),
   }
 }

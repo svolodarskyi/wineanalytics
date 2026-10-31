@@ -49,15 +49,12 @@ export const WINE_SCAN_PROMPT = `You are extracting structured data from 1-3 pho
 Read every image together as one wine, not separate items, and return a single JSON object with exactly this shape:
 
 {
-  "name": string | null,      // the wine's own name as printed, e.g. "Cabernet Sauvignon" or a proprietary name like "Insignia" - do NOT include the producer/winery name here, it goes in "producer"
-  "producer": string | null,  // the winery/producer name, e.g. "Caymus Vineyards"
+  "name": string | null,      // the wine's own name as printed, e.g. "Cabernet Sauvignon" or a proprietary name like "Insignia" - do NOT include the producer/winery name here
   "volumeMl": number | null,  // bottle size in milliliters - convert whatever unit is printed (750ml -> 750, 1.5L -> 1500, a 25.4oz bottle -> 750) - if no size is visible, default to 750 (the standard bottle size) rather than null
-  "country": string | null,   // country of origin, e.g. "France", "USA", "Italy"
   "category": "red" | "white" | "rose" | "sparkling" | "dessert" | "fortified" | "beer" | "spirits" | "cider" | "non_alcoholic" | "other" | null
 }
 
 Rules:
 - Output ONLY the JSON object. No markdown fences, no commentary, no explanation.
 - If a field genuinely cannot be determined from the images, use null - do not guess a value you can't support from what's visible.
-- Infer "category" from the grape variety, label wording, and bottle appearance (e.g. "Cabernet Sauvignon" is red, "Sauvignon Blanc" is white, "Champagne"/"Prosecco"/"Brut" is sparkling, "Port"/"Sherry" is fortified, "IPA"/"Lager"/"Ale" is beer, "Vodka"/"Whiskey"/"Tequila" is spirits). Use null only if you genuinely cannot tell - do not default to "other".
-- "country" is where the wine was produced (often printed as "Product of ..." or implied by the appellation/region), not the language on the label.`
+- Infer "category" from the grape variety, label wording, and bottle appearance (e.g. "Cabernet Sauvignon" is red, "Sauvignon Blanc" is white, "Champagne"/"Prosecco"/"Brut" is sparkling, "Port"/"Sherry" is fortified, "IPA"/"Lager"/"Ale" is beer, "Vodka"/"Whiskey"/"Tequila" is spirits). Use null only if you genuinely cannot tell - do not default to "other".`
