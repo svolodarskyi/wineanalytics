@@ -8,7 +8,7 @@ const WINE_ROW = {
   name: 'Caymus Cabernet Sauvignon',
   invoice_name: null,
   volume_ml: 750,
-  category: 'red',
+  category: 'wine',
   active: true,
   created_at: '2026-01-01T00:00:00.000Z',
 }
@@ -32,7 +32,7 @@ describe('supabase alert service', () => {
       const result = await alerts.listInventoryAlerts()
       expect(result).toEqual([
         {
-          wine: expect.objectContaining({ id: 'w1', name: 'Caymus Cabernet Sauvignon', volumeMl: 750, category: 'red' }),
+          wine: expect.objectContaining({ id: 'w1', name: 'Caymus Cabernet Sauvignon', volumeMl: 750, category: 'wine' }),
           balanceInBottles: 2,
           minBottles: 5,
         },

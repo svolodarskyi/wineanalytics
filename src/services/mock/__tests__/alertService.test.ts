@@ -172,7 +172,7 @@ describe('mock alert service', () => {
         name: 'Complete Wine',
         invoiceName: null,
         volumeMl: 750,
-        category: 'red' as const,
+        category: 'wine' as const,
         imageDataUrls: [],
         active: true,
         createdAt: new Date().toISOString(),

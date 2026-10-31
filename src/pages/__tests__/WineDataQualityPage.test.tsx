@@ -27,7 +27,7 @@ describe('WineDataQualityPage', () => {
     const wine = await testServicesState.current.wines.create({
       name: 'Complete Wine',
       volumeMl: 750,
-      category: 'red',
+      category: 'wine',
     })
     renderWithProviders(<WineDataQualityPage />, { route: `/wines/${wine.id}`, path: '/wines/:wineId' })
 

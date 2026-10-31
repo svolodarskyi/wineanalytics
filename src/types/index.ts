@@ -4,18 +4,7 @@ export type MatchStatus = 'suggested' | 'confirmed' | 'changed' | 'unresolved'
 
 export type InvoiceStatus = 'processing' | 'not_approved' | 'approved'
 
-export type WineCategory =
-  | 'red'
-  | 'white'
-  | 'rose'
-  | 'sparkling'
-  | 'dessert'
-  | 'fortified'
-  | 'beer'
-  | 'spirits'
-  | 'cider'
-  | 'non_alcoholic'
-  | 'other'
+export type WineCategory = 'wine' | 'hard_liquor' | 'beer' | 'sake' | 'other'
 
 export interface Wine {
   id: string

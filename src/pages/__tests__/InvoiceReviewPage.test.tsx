@@ -189,7 +189,7 @@ describe('InvoiceReviewPage', () => {
     const dialog = within(row).getByRole('dialog')
     const createButton = within(dialog).getByRole('button', { name: /create wine/i })
     expect(within(dialog).getByLabelText(/volume/i)).toHaveValue(750)
-    expect(within(dialog).getByLabelText(/category/i)).toHaveValue('red')
+    expect(within(dialog).getByLabelText(/category/i)).toHaveValue('wine')
     expect(createButton).toBeDisabled()
 
     // Editing the prefilled volume re-requires approval rather than silently accepting the edit.
@@ -210,7 +210,7 @@ describe('InvoiceReviewPage', () => {
     await waitFor(() => expect(within(row).getByText('Resolved')).toBeInTheDocument())
 
     const created = (await testServicesState.current.wines.list()).find((w) => w.name === 'Caymus Cabernet Sauvignon')
-    expect(created).toMatchObject({ volumeMl: 750, category: 'red' })
+    expect(created).toMatchObject({ volumeMl: 750, category: 'wine' })
   })
 
   it('lets category be cleared instead of approved, with no gate once it is empty', async () => {

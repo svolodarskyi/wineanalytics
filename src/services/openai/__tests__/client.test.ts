@@ -24,7 +24,7 @@ describe('extractWinePhotos', () => {
 
   it('sends every photo as its own image_url content part alongside the wine-scan prompt', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      fakeOpenAiResponse({ name: 'Cabernet Sauvignon', volumeMl: 750, category: 'red' }),
+      fakeOpenAiResponse({ name: 'Cabernet Sauvignon', volumeMl: 750, category: 'wine' }),
     )
     vi.stubGlobal('fetch', fetchMock)
 
@@ -43,7 +43,7 @@ describe('extractWinePhotos', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        fakeOpenAiResponse({ name: 'Cabernet Sauvignon', volumeMl: 750, category: 'red' }),
+        fakeOpenAiResponse({ name: 'Cabernet Sauvignon', volumeMl: 750, category: 'wine' }),
       ),
     )
 
@@ -52,7 +52,7 @@ describe('extractWinePhotos', () => {
     expect(result.parsed).toEqual({
       name: 'Cabernet Sauvignon',
       volumeMl: 750,
-      category: 'red',
+      category: 'wine',
     })
     expect(result.usage).toEqual({ promptTokens: 100, completionTokens: 20, totalTokens: 120 })
   })

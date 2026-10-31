@@ -2,19 +2,7 @@ import type { AdditionalCharge, OpenAiUsage, WineCategory } from '../../types'
 import { estimateCostUsd, INVOICE_OCR_MODEL, WINE_SCAN_MODEL } from './pricing'
 import { INVOICE_EXTRACTION_PROMPT, WINE_SCAN_PROMPT } from './prompt'
 
-const WINE_CATEGORIES: readonly WineCategory[] = [
-  'red',
-  'white',
-  'rose',
-  'sparkling',
-  'dessert',
-  'fortified',
-  'beer',
-  'spirits',
-  'cider',
-  'non_alcoholic',
-  'other',
-]
+const WINE_CATEGORIES: readonly WineCategory[] = ['wine', 'hard_liquor', 'beer', 'sake', 'other']
 
 export interface OpenAiExtractedLineItem {
   itemName: string

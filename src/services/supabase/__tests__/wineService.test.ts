@@ -115,13 +115,13 @@ describe('supabase wine service', () => {
   })
 
   it('create sends volumeMl and category through to the insert payload', async () => {
-    const from = vi.fn(() => fakeQueryBuilder({ data: { ...ROW, volume_ml: 750, category: 'red' } }))
+    const from = vi.fn(() => fakeQueryBuilder({ data: { ...ROW, volume_ml: 750, category: 'wine' } }))
     const wines = createSupabaseWineService(supabaseWith(from))
-    const wine = await wines.create({ name: 'New Wine', volumeMl: 750, category: 'red' })
+    const wine = await wines.create({ name: 'New Wine', volumeMl: 750, category: 'wine' })
     expect(wine.volumeMl).toBe(750)
-    expect(wine.category).toBe('red')
+    expect(wine.category).toBe('wine')
     const insertBuilder = from.mock.results[0].value
-    expect(insertBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({ volume_ml: 750, category: 'red' }))
+    expect(insertBuilder.insert).toHaveBeenCalledWith(expect.objectContaining({ volume_ml: 750, category: 'wine' }))
   })
 
   it('delete blocks when the wine has invoice history', async () => {

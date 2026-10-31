@@ -53,13 +53,13 @@ describe('mock wine service', () => {
     expect(bare.volumeMl).toBeNull()
     expect(bare.category).toBeNull()
 
-    const detailed = await services.wines.create({ name: 'Detailed Wine', volumeMl: 750, category: 'red' })
+    const detailed = await services.wines.create({ name: 'Detailed Wine', volumeMl: 750, category: 'wine' })
     expect(detailed.volumeMl).toBe(750)
-    expect(detailed.category).toBe('red')
+    expect(detailed.category).toBe('wine')
 
-    const updated = await services.wines.update(detailed.id, { name: 'Detailed Wine', volumeMl: 1500, category: 'white' })
+    const updated = await services.wines.update(detailed.id, { name: 'Detailed Wine', volumeMl: 1500, category: 'wine' })
     expect(updated.volumeMl).toBe(1500)
-    expect(updated.category).toBe('white')
+    expect(updated.category).toBe('wine')
   })
 
   it('deactivating a wine hides it from the default list but keeps it with includeInactive', async () => {

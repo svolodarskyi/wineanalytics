@@ -23,17 +23,13 @@ function daysAgoAt(days: number, hour: number, minute: number): Date {
 /** What a wine of this category roughly costs per bottle on an invoice - just enough variety for realistic-looking analytics, not a real price list. */
 function baseCostForCategory(category: WineCategory | null): number {
   switch (category) {
-    case 'sparkling':
-      return 24
-    case 'dessert':
-      return 30
-    case 'fortified':
-      return 26
-    case 'red':
+    case 'wine':
       return 20
-    case 'rose':
-      return 16
-    case 'white':
+    case 'hard_liquor':
+      return 26
+    case 'sake':
+      return 22
+    case 'beer':
       return 15
     default:
       return 18
