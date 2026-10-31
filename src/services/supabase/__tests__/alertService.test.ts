@@ -9,6 +9,8 @@ const WINE_ROW = {
   invoice_name: null,
   volume_ml: 750,
   category: 'wine',
+  style: 'red',
+  country: 'italy',
   active: true,
   created_at: '2026-01-01T00:00:00.000Z',
 }

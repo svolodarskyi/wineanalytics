@@ -28,6 +28,7 @@ describe('WineDataQualityPage', () => {
       name: 'Complete Wine',
       volumeMl: 750,
       category: 'wine',
+      country: 'france',
     })
     renderWithProviders(<WineDataQualityPage />, { route: `/wines/${wine.id}`, path: '/wines/:wineId' })
 

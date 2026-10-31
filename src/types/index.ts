@@ -146,7 +146,7 @@ export interface InventoryAlert {
 }
 
 /** Wine fields checked for completeness - see src/utils/dataQuality.ts for the tracked-fields list. */
-export type DataQualityField = 'volumeMl' | 'category'
+export type DataQualityField = 'volumeMl' | 'category' | 'country'
 
 /** One missing field on one wine - each gets its own alert row, not grouped by wine. */
 export interface DataQualityAlert {

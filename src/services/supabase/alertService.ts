@@ -26,6 +26,8 @@ interface WineRow {
   invoice_name: string | null
   volume_ml: number | null
   category: Wine['category']
+  style: Wine['style']
+  country: Wine['country']
   active: boolean
   created_at: string
 }
@@ -50,8 +52,8 @@ function toLightWine(row: WineRow): Wine {
     invoiceName: row.invoice_name,
     volumeMl: row.volume_ml,
     category: row.category,
-    style: null,
-    country: null,
+    style: row.style,
+    country: row.country,
     imageDataUrls: [],
     active: row.active,
     createdAt: row.created_at,
