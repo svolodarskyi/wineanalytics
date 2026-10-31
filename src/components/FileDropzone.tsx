@@ -23,7 +23,6 @@ export function FileDropzone({ onFileSelected, disabled, autoOpen }: FileDropzon
   // check. PDFs skip straight through below since rotation doesn't apply.
   const [pending, setPending] = useState<PendingPhoto | null>(null)
   const [isRotating, setIsRotating] = useState(false)
-  const [isAdding, setIsAdding] = useState(false)
 
   // Only ever fires once, on mount - reopening on every re-render would fight the user closing the native picker.
   useEffect(() => {
@@ -55,20 +54,27 @@ export function FileDropzone({ onFileSelected, disabled, autoOpen }: FileDropzon
     }
   }
 
-  async function handleConfirm() {
+  // Closes the modal immediately rather than waiting on downscaleImageFile -
+  // on a full-res phone photo that re-encode can take a few seconds, and
+  // making the user stare at a frozen "Adding..." button for it reads as a
+  // hang. The rest of the app already treats this as background work (see
+  // the upload queue in InvoicesPage), so finish it the same way here.
+  function handleConfirm() {
     if (!pending) return
+    const file = pending.file
     setError(null)
-    setIsAdding(true)
+    closePreview()
+    void finishAddingPhoto(file)
+  }
+
+  async function finishAddingPhoto(file: File) {
     try {
-      const fileToRead = await downscaleImageFile(pending.file)
+      const fileToRead = await downscaleImageFile(file)
       const fileDataUrl = await readFileAsDataUrl(fileToRead)
-      onFileSelected({ fileName: pending.file.name, fileType: 'image', fileDataUrl })
-      closePreview()
+      onFileSelected({ fileName: file.name, fileType: 'image', fileDataUrl })
     } catch (err) {
-      console.error(`Could not read file "${pending.file.name}":`, err)
+      console.error(`Could not read file "${file.name}":`, err)
       setError('Could not read that file. Please try again.')
-    } finally {
-      setIsAdding(false)
     }
   }
 
@@ -123,14 +129,14 @@ export function FileDropzone({ onFileSelected, disabled, autoOpen }: FileDropzon
           <div className="stack">
             <img src={pending.previewUrl} alt="Invoice preview" style={{ maxWidth: '100%', borderRadius: 8 }} />
             <div className="picker" style={{ justifyContent: 'flex-end' }}>
-              <button type="button" className="btn" disabled={isRotating || isAdding} onClick={handleRotate}>
+              <button type="button" className="btn" disabled={isRotating} onClick={handleRotate}>
                 {isRotating ? 'Rotating...' : 'Rotate 90°'}
               </button>
-              <button type="button" className="btn" disabled={isAdding} onClick={closePreview}>
+              <button type="button" className="btn" onClick={closePreview}>
                 Cancel
               </button>
-              <button type="button" className="btn btn--primary" disabled={isRotating || isAdding} onClick={handleConfirm}>
-                {isAdding ? 'Adding...' : 'Add invoice'}
+              <button type="button" className="btn btn--primary" disabled={isRotating} onClick={handleConfirm}>
+                Add invoice
               </button>
             </div>
           </div>
