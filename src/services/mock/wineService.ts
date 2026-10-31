@@ -40,6 +40,8 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
       invoiceName?: string | null
       volumeMl?: number | null
       category?: Wine['category']
+      style?: Wine['style']
+      country?: Wine['country']
       imageDataUrls?: string[]
     }): Promise<Wine> {
       await delay(latencyMs)
@@ -53,6 +55,8 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
         invoiceName: input.invoiceName?.trim() || null,
         volumeMl: normalizeVolumeMl(input.volumeMl),
         category: input.category ?? null,
+        style: input.category === 'wine' ? input.style ?? null : null,
+        country: input.category === 'wine' ? input.country ?? null : null,
         imageDataUrls: (input.imageDataUrls ?? []).slice(0, 3),
         active: true,
         createdAt: new Date().toISOString(),
@@ -68,6 +72,8 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
         invoiceName?: string | null
         volumeMl?: number | null
         category?: Wine['category']
+        style?: Wine['style']
+        country?: Wine['country']
         imageDataUrls?: string[]
       },
     ): Promise<Wine> {
@@ -81,6 +87,8 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
         invoiceName: input.invoiceName?.trim() || null,
         volumeMl: normalizeVolumeMl(input.volumeMl),
         category: input.category ?? null,
+        style: input.category === 'wine' ? input.style ?? null : null,
+        country: input.category === 'wine' ? input.country ?? null : null,
         imageDataUrls: input.imageDataUrls !== undefined ? input.imageDataUrls.slice(0, 3) : wine.imageDataUrls,
       }))
     },

@@ -6,6 +6,24 @@ export type InvoiceStatus = 'processing' | 'not_approved' | 'approved'
 
 export type WineCategory = 'wine' | 'hard_liquor' | 'beer' | 'sake' | 'other'
 
+/** Only meaningful when category is 'wine' - hidden in the UI otherwise. */
+export type WineStyle = 'red' | 'white' | 'sparkling' | 'other'
+
+/** Only meaningful when category is 'wine' - hidden in the UI otherwise. */
+export type WineCountry =
+  | 'france'
+  | 'italy'
+  | 'usa'
+  | 'spain'
+  | 'germany'
+  | 'argentina'
+  | 'chile'
+  | 'australia'
+  | 'new_zealand'
+  | 'portugal'
+  | 'south_africa'
+  | 'other'
+
 export interface Wine {
   id: string
   name: string
@@ -14,6 +32,8 @@ export interface Wine {
   /** Bottle size in milliliters, e.g. 750, 1500. The standard unit for inventory/volume math - never a formatted string. */
   volumeMl: number | null
   category: WineCategory | null
+  style: WineStyle | null
+  country: WineCountry | null
   /** Data URLs of uploaded label/bottle photos - up to 3. */
   imageDataUrls: string[]
   active: boolean

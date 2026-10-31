@@ -46,6 +46,8 @@ export function useCreateWine() {
       invoiceName?: string | null
       volumeMl?: number | null
       category?: Wine['category']
+      style?: Wine['style']
+      country?: Wine['country']
       imageDataUrls?: string[]
     }) => services.wines.create(input),
     onSuccess: invalidate,
@@ -64,6 +66,8 @@ export function useUpdateWine() {
       invoiceName?: string | null
       volumeMl?: number | null
       category?: Wine['category']
+      style?: Wine['style']
+      country?: Wine['country']
       imageDataUrls?: string[]
     }) => services.wines.update(id, input),
     onSuccess: invalidate,

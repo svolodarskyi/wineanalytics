@@ -3,28 +3,36 @@ import { createId } from './ids'
 
 export function seedWines(): Wine[] {
   const now = new Date().toISOString()
-  const wines: { name: string; category: Wine['category']; volumeMl: number | null }[] = [
-    { name: 'Chateau Ste. Michelle Riesling', category: 'wine', volumeMl: 750 },
-    { name: 'Caymus Cabernet Sauvignon', category: 'wine', volumeMl: 750 },
-    { name: 'Kim Crawford Sauvignon Blanc', category: 'wine', volumeMl: 750 },
-    { name: 'Veuve Clicquot Brut', category: 'wine', volumeMl: 750 },
-    { name: 'Antinori Tignanello', category: 'wine', volumeMl: 750 },
-    { name: 'La Crema Pinot Noir', category: 'wine', volumeMl: 750 },
-    { name: 'Whispering Angel Rose', category: 'wine', volumeMl: 750 },
-    { name: 'Chateau d\'Yquem Sauternes', category: 'wine', volumeMl: 375 },
-    { name: 'Taylor Fladgate 20 Year Tawny Port', category: 'wine', volumeMl: 750 },
-    { name: 'Domaine Serene Pinot Noir', category: 'wine', volumeMl: 750 },
-    { name: 'Josh Cellars Cabernet', category: 'wine', volumeMl: 750 },
+  const wines: {
+    name: string
+    category: Wine['category']
+    style: Wine['style']
+    country: Wine['country']
+    volumeMl: number | null
+  }[] = [
+    { name: 'Chateau Ste. Michelle Riesling', category: 'wine', style: 'white', country: 'usa', volumeMl: 750 },
+    { name: 'Caymus Cabernet Sauvignon', category: 'wine', style: 'red', country: 'usa', volumeMl: 750 },
+    { name: 'Kim Crawford Sauvignon Blanc', category: 'wine', style: 'white', country: 'new_zealand', volumeMl: 750 },
+    { name: 'Veuve Clicquot Brut', category: 'wine', style: 'sparkling', country: 'france', volumeMl: 750 },
+    { name: 'Antinori Tignanello', category: 'wine', style: 'red', country: 'italy', volumeMl: 750 },
+    { name: 'La Crema Pinot Noir', category: 'wine', style: 'red', country: 'usa', volumeMl: 750 },
+    { name: 'Whispering Angel Rose', category: 'wine', style: 'other', country: 'france', volumeMl: 750 },
+    { name: 'Chateau d\'Yquem Sauternes', category: 'wine', style: 'white', country: 'france', volumeMl: 375 },
+    { name: 'Taylor Fladgate 20 Year Tawny Port', category: 'wine', style: 'other', country: 'portugal', volumeMl: 750 },
+    { name: 'Domaine Serene Pinot Noir', category: 'wine', style: 'red', country: 'usa', volumeMl: 750 },
+    { name: 'Josh Cellars Cabernet', category: 'wine', style: 'red', country: 'usa', volumeMl: 750 },
     // No volumeMl yet - exercises the data-quality alert and the
     // purchased-only balance fallback for a wine that can't convert sales.
-    { name: 'Chandon Brut Rose', category: 'wine', volumeMl: null },
+    { name: 'Chandon Brut Rose', category: 'wine', style: 'sparkling', country: 'usa', volumeMl: null },
   ]
-  return wines.map(({ name, category, volumeMl }) => ({
+  return wines.map(({ name, category, style, country, volumeMl }) => ({
     id: createId('wine'),
     name,
     invoiceName: null,
     volumeMl,
     category,
+    style,
+    country,
     imageDataUrls: [],
     active: true,
     createdAt: now,

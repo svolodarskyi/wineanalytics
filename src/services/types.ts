@@ -15,7 +15,9 @@ import type {
   WineAlertThreshold,
   WineBalance,
   WineCategory,
+  WineCountry,
   WineSale,
+  WineStyle,
 } from '../types'
 
 /**
@@ -44,6 +46,10 @@ export interface WineService {
     invoiceName?: string | null
     volumeMl?: number | null
     category?: WineCategory | null
+    /** Only meaningful when category is 'wine'. */
+    style?: WineStyle | null
+    /** Only meaningful when category is 'wine'. */
+    country?: WineCountry | null
     /** Undefined leaves photos untouched; an array (0-3 entries) replaces the whole set. */
     imageDataUrls?: string[]
   }): Promise<Wine>
@@ -54,6 +60,10 @@ export interface WineService {
       invoiceName?: string | null
       volumeMl?: number | null
       category?: WineCategory | null
+      /** Only meaningful when category is 'wine'. */
+      style?: WineStyle | null
+      /** Only meaningful when category is 'wine'. */
+      country?: WineCountry | null
       /** Undefined leaves photos untouched; an array (0-3 entries) replaces the whole set. */
     imageDataUrls?: string[]
     },

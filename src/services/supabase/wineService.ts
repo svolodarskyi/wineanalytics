@@ -13,6 +13,8 @@ interface WineRow {
   invoice_name: string | null
   volume_ml: number | null
   category: Wine['category']
+  style: Wine['style']
+  country: Wine['country']
   image_urls: string[] | null
   active: boolean
   created_at: string
@@ -26,6 +28,8 @@ async function toWine(supabase: SupabaseClient, row: WineRow): Promise<Wine> {
     invoiceName: row.invoice_name,
     volumeMl: row.volume_ml,
     category: row.category,
+    style: row.style,
+    country: row.country,
     // A signing failure drops that one photo rather than failing the whole wine.
     imageDataUrls: resolved.filter((url): url is string => url !== null),
     active: row.active,
@@ -92,6 +96,8 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
       invoiceName?: string | null
       volumeMl?: number | null
       category?: Wine['category']
+      style?: Wine['style']
+      country?: Wine['country']
       imageDataUrls?: string[]
     }): Promise<Wine> {
       const name = input.name.trim()
@@ -108,6 +114,8 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
           invoice_name: input.invoiceName?.trim() || null,
           volume_ml: normalizeVolumeMl(input.volumeMl),
           category: input.category ?? null,
+          style: input.category === 'wine' ? input.style ?? null : null,
+          country: input.category === 'wine' ? input.country ?? null : null,
           image_urls: imagePaths,
         })
         .select('*')
@@ -126,6 +134,8 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
         invoiceName?: string | null
         volumeMl?: number | null
         category?: Wine['category']
+        style?: Wine['style']
+        country?: Wine['country']
         imageDataUrls?: string[]
       },
     ): Promise<Wine> {
@@ -149,6 +159,8 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
           invoice_name: input.invoiceName?.trim() || null,
           volume_ml: normalizeVolumeMl(input.volumeMl),
           category: input.category ?? null,
+          style: input.category === 'wine' ? input.style ?? null : null,
+          country: input.category === 'wine' ? input.country ?? null : null,
           ...(imagePaths !== undefined ? { image_urls: imagePaths } : {}),
         })
         .eq('id', id)

@@ -69,6 +69,8 @@ describe('computeInventoryValue', () => {
     invoiceName: null,
     volumeMl: 355,
     category: 'beer',
+    style: null,
+    country: null,
     imageDataUrls: [],
     active: true,
     createdAt: '2026-01-01T00:00:00.000Z',

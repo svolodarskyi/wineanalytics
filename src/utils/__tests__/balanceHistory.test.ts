@@ -8,6 +8,8 @@ const wine: Wine = {
   invoiceName: null,
   volumeMl: 750,
   category: 'wine',
+  style: null,
+  country: null,
   imageDataUrls: [],
   active: true,
   createdAt: '2026-01-01T00:00:00.000Z',

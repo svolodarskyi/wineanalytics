@@ -50,6 +50,8 @@ function toLightWine(row: WineRow): Wine {
     invoiceName: row.invoice_name,
     volumeMl: row.volume_ml,
     category: row.category,
+    style: null,
+    country: null,
     imageDataUrls: [],
     active: row.active,
     createdAt: row.created_at,
