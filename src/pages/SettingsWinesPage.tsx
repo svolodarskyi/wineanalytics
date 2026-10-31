@@ -39,7 +39,6 @@ export function SettingsWinesPage() {
       onDelete={(id) => deleteWine.mutateAsync(id)}
       onScanWine={(imageDataUrls) => extractWine.mutateAsync(imageDataUrls)}
       showWineDetails
-      showImage
       autoOpenId={autoOpenWineId}
       onAutoOpened={() => {
         const next = new URLSearchParams(searchParams)
