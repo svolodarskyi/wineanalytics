@@ -83,8 +83,13 @@ const INVOICE_JSON_SCHEMA = {
   additionalProperties: false,
 }
 
-export async function extractInvoiceWithClaude(imageUrl: string, anthropicApiKey: string): Promise<VisionExtractionResult> {
-  const client = new Anthropic({ apiKey: anthropicApiKey })
+export async function extractInvoiceWithClaude(imageUrl: string, anthropicApiKey: string, workspaceId?: string): Promise<VisionExtractionResult> {
+  // A user-scoped API key (sk-ant-usr-...) isn't tied to a workspace by default,
+  // so Anthropic requires this header to say which workspace to bill/run under.
+  const client = new Anthropic({
+    apiKey: anthropicApiKey,
+    defaultHeaders: workspaceId ? { 'anthropic-workspace-id': workspaceId } : undefined,
+  })
 
   const response = await client.messages.create({
     model: ANTHROPIC_INVOICE_OCR_MODEL,

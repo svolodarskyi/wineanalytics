@@ -189,7 +189,7 @@ async function runExtraction(
   try {
     const result =
       provider === 'anthropic'
-        ? await extractInvoiceWithClaude(signed.signedUrl, requireEnv('ANTHROPIC_API_KEY'))
+        ? await extractInvoiceWithClaude(signed.signedUrl, requireEnv('ANTHROPIC_API_KEY'), Deno.env.get('ANTHROPIC_WORKSPACE_ID'))
         : await extractInvoiceWithOpenAi(signed.signedUrl, requireEnv('OPENAI_API_KEY'))
     extraction = result.parsed
     usage = result.usage
