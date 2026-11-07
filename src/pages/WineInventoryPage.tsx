@@ -19,6 +19,7 @@ export function WineInventoryPage() {
   const { data: inventoryAlerts } = useInventoryAlerts()
   const [sortDir, setSortDir] = useState<SortDir>(null)
   const [categoryFilter, setCategoryFilter] = useState<WineCategory | ''>('')
+  const [query, setQuery] = useState('')
 
   const lowStockWineIds = useMemo(() => new Set((inventoryAlerts ?? []).map((alert) => alert.wine.id)), [inventoryAlerts])
 
@@ -30,9 +31,14 @@ export function WineInventoryPage() {
   )
 
   const filteredBalances = useMemo(() => {
-    if (!balances || !categoryFilter) return balances
-    return balances.filter(({ wine }) => wine.category === categoryFilter)
-  }, [balances, categoryFilter])
+    if (!balances) return balances
+    const trimmedQuery = query.trim().toLowerCase()
+    return balances.filter(
+      ({ wine }) =>
+        (!categoryFilter || wine.category === categoryFilter) &&
+        (!trimmedQuery || wine.name.toLowerCase().includes(trimmedQuery)),
+    )
+  }, [balances, categoryFilter, query])
 
   const sortedBalances = useMemo(() => {
     if (!filteredBalances || !sortDir) return filteredBalances
@@ -82,18 +88,28 @@ export function WineInventoryPage() {
           <h1>Wine Inventory</h1>
           <p className="page-header__meta">Ending bottles: purchased from approved invoices, minus sold.</p>
         </div>
-        <select
-          aria-label="Filter by category"
-          value={categoryFilter}
-          onChange={(event) => setCategoryFilter(event.target.value as WineCategory | '')}
-        >
-          <option value="">All categories</option>
-          {WINE_CATEGORY_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="inline-form" style={{ marginBottom: 0 }}>
+          <input
+            type="search"
+            className="search-input"
+            placeholder="Search wines"
+            aria-label="Search wines"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <select
+            aria-label="Filter by category"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value as WineCategory | '')}
+          >
+            <option value="">All categories</option>
+            {WINE_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {error && <p className="notice notice--error">Could not load wine balances.</p>}
@@ -104,7 +120,7 @@ export function WineInventoryPage() {
           <p className="empty-state">No wines yet. Add wines from Settings to get started.</p>
         )}
         {!isLoading && !!balances?.length && filteredBalances?.length === 0 && (
-          <p className="empty-state">No wines in this category.</p>
+          <p className="empty-state">No wines match your search.</p>
         )}
         {!!sortedBalances?.length && (
           <table className="data-table data-table--compact">
