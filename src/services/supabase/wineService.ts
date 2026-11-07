@@ -80,6 +80,9 @@ export function createSupabaseWineService(supabase: SupabaseClient): WineService
       if (options?.query?.trim()) {
         query = query.ilike('name', `%${options.query.trim()}%`)
       }
+      if (options?.category) {
+        query = query.eq('category', options.category)
+      }
       const { data, error } = await query
       throwIfError(error)
       return Promise.all((data as WineRow[]).map((row) => toWine(supabase, row)))

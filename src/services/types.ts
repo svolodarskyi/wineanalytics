@@ -36,7 +36,9 @@ export interface ListOptions {
   includeInactive?: boolean
 }
 
-export type WineListOptions = ListOptions
+export interface WineListOptions extends ListOptions {
+  category?: WineCategory
+}
 
 export interface WineService {
   list(options?: WineListOptions): Promise<Wine[]>

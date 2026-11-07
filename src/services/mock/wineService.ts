@@ -27,6 +27,9 @@ export function createMockWineService(store: MockStore, latencyMs: number): Wine
           results = results.filter((wine) => wine.name.toLowerCase().includes(query))
         }
       }
+      if (options?.category) {
+        results = results.filter((wine) => wine.category === options.category)
+      }
       return [...results].sort(compareWines)
     },
 

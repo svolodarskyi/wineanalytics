@@ -3,11 +3,13 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { EntityManager } from '../components/EntityManager'
 import { useExtractWine } from '../hooks/useOpenAi'
 import { useCreateWine, useDeleteWine, useSetWineActive, useUpdateWine, useWines } from '../hooks/useWines'
+import type { WineCategory } from '../types'
 
 export function SettingsWinesPage() {
   const [query, setQuery] = useState('')
   const [includeInactive, setIncludeInactive] = useState(false)
-  const { data: wines, isLoading } = useWines({ query, includeInactive })
+  const [categoryFilter, setCategoryFilter] = useState<WineCategory | ''>('')
+  const { data: wines, isLoading } = useWines({ query, includeInactive, category: categoryFilter || undefined })
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const autoOpenWineId = searchParams.get('wineId') ?? undefined
@@ -33,6 +35,8 @@ export function SettingsWinesPage() {
       onQueryChange={setQuery}
       includeInactive={includeInactive}
       onIncludeInactiveChange={setIncludeInactive}
+      categoryFilter={categoryFilter}
+      onCategoryFilterChange={setCategoryFilter}
       onCreate={(input) => createWine.mutateAsync(input)}
       onUpdate={(id, input) => updateWine.mutateAsync({ id, ...input })}
       onSetActive={(id, active) => setWineActive.mutateAsync({ id, active })}

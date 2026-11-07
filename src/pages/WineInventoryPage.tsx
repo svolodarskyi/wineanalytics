@@ -5,8 +5,10 @@ import { StatTile } from '../components/StatTile'
 import { useInventoryAlerts } from '../hooks/useAlerts'
 import { useInvoices } from '../hooks/useInvoices'
 import { useWineBalances } from '../hooks/useWines'
+import type { WineCategory } from '../types'
 import { computeInventoryValue, computeSpendSummary } from '../utils/dashboard'
 import { formatBottles, formatCurrency, formatDeltaPct } from '../utils/format'
+import { WINE_CATEGORY_OPTIONS } from '../utils/wineFormOptions'
 
 type SortDir = 'asc' | 'desc' | null
 
@@ -16,6 +18,7 @@ export function WineInventoryPage() {
   const { data: approvedInvoices } = useInvoices('approved')
   const { data: inventoryAlerts } = useInventoryAlerts()
   const [sortDir, setSortDir] = useState<SortDir>(null)
+  const [categoryFilter, setCategoryFilter] = useState<WineCategory | ''>('')
 
   const lowStockWineIds = useMemo(() => new Set((inventoryAlerts ?? []).map((alert) => alert.wine.id)), [inventoryAlerts])
 
@@ -26,11 +29,16 @@ export function WineInventoryPage() {
     [balances, approvedInvoices],
   )
 
+  const filteredBalances = useMemo(() => {
+    if (!balances || !categoryFilter) return balances
+    return balances.filter(({ wine }) => wine.category === categoryFilter)
+  }, [balances, categoryFilter])
+
   const sortedBalances = useMemo(() => {
-    if (!balances || !sortDir) return balances
+    if (!filteredBalances || !sortDir) return filteredBalances
     const sign = sortDir === 'asc' ? 1 : -1
-    return [...balances].sort((a, b) => sign * (a.balanceInBottles - b.balanceInBottles))
-  }, [balances, sortDir])
+    return [...filteredBalances].sort((a, b) => sign * (a.balanceInBottles - b.balanceInBottles))
+  }, [filteredBalances, sortDir])
 
   function toggleSort() {
     setSortDir((current) => (current === 'asc' ? 'desc' : 'asc'))
@@ -74,6 +82,18 @@ export function WineInventoryPage() {
           <h1>Wine Inventory</h1>
           <p className="page-header__meta">Ending bottles: purchased from approved invoices, minus sold.</p>
         </div>
+        <select
+          aria-label="Filter by category"
+          value={categoryFilter}
+          onChange={(event) => setCategoryFilter(event.target.value as WineCategory | '')}
+        >
+          <option value="">All categories</option>
+          {WINE_CATEGORY_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {error && <p className="notice notice--error">Could not load wine balances.</p>}
@@ -82,6 +102,9 @@ export function WineInventoryPage() {
         {isLoading && <p className="spinner-text">Loading...</p>}
         {!isLoading && balances?.length === 0 && (
           <p className="empty-state">No wines yet. Add wines from Settings to get started.</p>
+        )}
+        {!isLoading && !!balances?.length && filteredBalances?.length === 0 && (
+          <p className="empty-state">No wines in this category.</p>
         )}
         {!!sortedBalances?.length && (
           <table className="data-table data-table--compact">

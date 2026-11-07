@@ -38,6 +38,9 @@ interface EntityManagerProps {
   onQueryChange: (query: string) => void
   includeInactive: boolean
   onIncludeInactiveChange: (includeInactive: boolean) => void
+  /** Wines only - filters the list to one category. Omitted entirely (not just unused) for Vendors, which have no category. */
+  categoryFilter?: WineCategory | ''
+  onCategoryFilterChange?: (category: WineCategory | '') => void
   onCreate: (input: EntityInput) => Promise<unknown>
   onUpdate: (id: string, input: EntityInput) => Promise<unknown>
   onSetActive: (id: string, active: boolean) => Promise<unknown>
@@ -183,6 +186,8 @@ export function EntityManager({
   onQueryChange,
   includeInactive,
   onIncludeInactiveChange,
+  categoryFilter,
+  onCategoryFilterChange,
   onCreate,
   onUpdate,
   onSetActive,
@@ -596,6 +601,20 @@ export function EntityManager({
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
         />
+        {onCategoryFilterChange && (
+          <select
+            aria-label="Filter by category"
+            value={categoryFilter ?? ''}
+            onChange={(event) => onCategoryFilterChange(event.target.value as WineCategory | '')}
+          >
+            <option value="">All categories</option>
+            {WINE_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        )}
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16 }}>
           <input
             type="checkbox"
